@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/styles">
+        <file>dark_theme.qss</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file>icons/start.png</file>
+        <file>icons/stop.png</file>
+        <file>icons/settings.png</file>
+        <file>icons/export.png</file>
+        <file>icons/history.png</file>
+    </qresource>
+</RCC>

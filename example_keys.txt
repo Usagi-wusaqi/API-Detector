@@ -1,0 +1,10 @@
+# API Keys 示例文件
+# 每行一个 API key，以 sk- 开头
+# 空行和以 # 开头的注释行会被自动忽略
+
+sk-example1234567890abcdef1234567890abcdef1234567890abcdef
+sk-example2234567890abcdef1234567890abcdef1234567890abcdef
+sk-example3234567890abcdef1234567890abcdef1234567890abcdef
+
+# 更多 API keys...
+# sk-your-real-api-key-here

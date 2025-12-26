@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows-gui:
+    name: Build Windows GUI
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.5.0'
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_msvc2019_64'
+        modules: 'qtbase qttools'
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.28.x'
+
+    - name: Setup Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
+
+    - name: Build project
+      run: |
+        mkdir build-gui
+        cd build-gui
+        cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+        cmake --build . --config Release
+
+    - name: Create release directory
+      run: |
+        mkdir release
+        copy build-gui\api-checker-gui.exe release\
+        copy build-gui\api-detector-launcher.exe release\
+
+    - name: Deploy Qt runtime for GUI
+      run: |
+        windeployqt --release --no-translations --no-system-d3d-compiler --no-opengl-sw release\api-checker-gui.exe
+
+    - name: Deploy Qt runtime for Launcher
+      run: |
+        windeployqt --release --no-translations --no-system-d3d-compiler --no-opengl-sw release\api-detector-launcher.exe
+
+    - name: Package dependencies for offline installation
+      run: |
+        mkdir release\dependencies
+        for %%f in (release\*.dll) do copy "%%f" release\dependencies\
+        powershell Compress-Archive -Path release\dependencies\* -DestinationPath release\dependencies.zip
+        rmdir /s /q release\dependencies
+
+    - name: Copy documentation and other files
+      run: |
+        copy README.md release\
+        copy LICENSE release\
+        copy example_keys.txt release\
+
+    - name: Create release package
+      run: |
+        powershell Compress-Archive -Path release\* -DestinationPath api-detector-gui-windows.zip
+
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: api-detector-gui-windows.zip
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
