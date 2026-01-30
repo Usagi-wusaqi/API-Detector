@@ -1,0 +1,10 @@
+﻿# API Keys 绀轰緥鏂囦欢
+# 姣忚涓€涓?API key锛屼互 sk- 寮€澶?
+# 绌鸿鍜屼互 # 寮€澶寸殑娉ㄩ噴琛屼細琚嚜鍔ㄥ拷鐣?
+
+sk-example1234567890abcdef1234567890abcdef1234567890abcdef
+sk-example2234567890abcdef1234567890abcdef1234567890abcdef
+sk-example3234567890abcdef1234567890abcdef1234567890abcdef
+
+# 鏇村 API keys...
+# sk-your-real-api-key-here
