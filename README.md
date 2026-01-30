@@ -35,7 +35,7 @@
 - 或手动执行：
 ```bash
 # 安装 .NET 8.0 SDK 后
-dotnet publish src/ApiDetector.csproj -c Release -r win-x64 -o .
+dotnet publish src/ApiDetector.csproj -c Release -r win-x64 -o . --self-contained true
 ```
 
 ## 📖 使用说明
