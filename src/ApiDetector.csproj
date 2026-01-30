@@ -13,6 +13,9 @@
     <Authors>API-Detector Team</Authors>
     <Description>跨平台 AI 大模型 API Key 检测器</Description>
 
+    <!-- 应用图标 (Windows) -->
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+
     <!-- Avalonia 配置 -->
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -41,6 +44,11 @@
 
     <!-- 开发工具 -->
     <PackageReference Include="Avalonia.Diagnostics" Version="11.2.3" Condition="'$(Configuration)' == 'Debug'" />
+  </ItemGroup>
+
+  <!-- Avalonia 资源 -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\icon.ico" />
   </ItemGroup>
 
 </Project>
