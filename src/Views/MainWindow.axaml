@@ -35,7 +35,7 @@
 
         <!-- 顶部配置区域 -->
         <Border Grid.Row="0" Classes="card">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" RowDefinitions="Auto,Auto">
+            <Grid ColumnDefinitions="*,*,*,Auto" RowDefinitions="Auto,Auto">
 
                 <!-- API 预设选择 -->
                 <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,16,8">
@@ -52,17 +52,19 @@
                 </StackPanel>
 
                 <!-- 并发数 -->
-                <StackPanel Grid.Column="1" Grid.Row="0" Margin="0,0,16,8" Width="100">
+                <StackPanel Grid.Column="1" Grid.Row="0" Margin="0,0,16,8">
                     <TextBlock Classes="title" Text="并发数"/>
                     <NumericUpDown Value="{Binding Concurrent}"
-                                   Minimum="1" Maximum="2000" Increment="10"/>
+                                   Minimum="1" Maximum="2000" Increment="10"
+                                   HorizontalAlignment="Stretch"/>
                 </StackPanel>
 
                 <!-- 超时 -->
-                <StackPanel Grid.Column="2" Grid.Row="0" Margin="0,0,16,8" Width="80">
+                <StackPanel Grid.Column="2" Grid.Row="0" Margin="0,0,16,8">
                     <TextBlock Classes="title" Text="超时(秒)"/>
                     <NumericUpDown Value="{Binding Timeout}"
-                                   Minimum="1" Maximum="60" Increment="5"/>
+                                   Minimum="1" Maximum="60" Increment="5"
+                                   HorizontalAlignment="Stretch"/>
                 </StackPanel>
 
                 <!-- 操作按钮 -->
