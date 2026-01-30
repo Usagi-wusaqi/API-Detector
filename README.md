@@ -2,7 +2,7 @@
 
 跨平台高性能 AI 大模型 API Key 检测器
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](https://dotnet.microsoft.com/)
 [![Avalonia](https://img.shields.io/badge/Avalonia-11.x-8B5CF6.svg)](https://avaloniaui.net/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/Usagi-wusaqi/API-Detector)
@@ -90,4 +90,4 @@ API-Detector/
 
 ## 📄 License
 
-[MIT License](LICENSE)
+[GNU GPL-3.0](LICENSE)
