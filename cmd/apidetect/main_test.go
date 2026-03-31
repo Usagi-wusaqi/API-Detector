@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -93,6 +94,46 @@ func TestRunCheckFailOnError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "error result") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunCheckWritesJSONReportToFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	tempDir := t.TempDir()
+	keysFile := filepath.Join(tempDir, "keys.txt")
+	outputFile := filepath.Join(tempDir, "report.json")
+
+	if err := os.WriteFile(keysFile, []byte("sk-test\n"), 0o644); err != nil {
+		t.Fatalf("os.WriteFile returned error: %v", err)
+	}
+
+	err := runWithCapturedStdout(t, []string{
+		"check",
+		"--provider", "custom",
+		"--url", server.URL,
+		"--input", keysFile,
+		"--format", "json",
+		"--output", outputFile,
+	})
+	if err != nil {
+		t.Fatalf("run returned error: %v", err)
+	}
+
+	content, err := os.ReadFile(outputFile)
+	if err != nil {
+		t.Fatalf("os.ReadFile returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(content, &payload); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+	if _, ok := payload["summary"]; !ok {
+		t.Fatalf("expected summary in JSON output: %s", string(content))
 	}
 }
 

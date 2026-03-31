@@ -80,6 +80,7 @@ go run ./cmd/apidetect check --provider gemini --input keys.txt --format json
 
 - `--provider`：选择 provider
 - `--input`：输入文件路径；省略时从 `stdin` 读取
+- `--output`：将主报告写入文件，而不是输出到标准输出
 - `--concurrency`：并发数，默认 `100`
 - `--timeout`：单请求超时，默认 `10s`
 - `--format`：`text` 或 `json`

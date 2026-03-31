@@ -65,6 +65,7 @@ func runCheck(args []string) error {
 	var (
 		providerName string
 		inputPath    string
+		outputPath   string
 		concurrency  int
 		timeoutRaw   string
 		format       string
@@ -78,6 +79,7 @@ func runCheck(args []string) error {
 
 	fs.StringVar(&providerName, "provider", "openai", "provider name")
 	fs.StringVar(&inputPath, "input", "", "path to input file, defaults to stdin")
+	fs.StringVar(&outputPath, "output", "", "write the main report to file instead of stdout")
 	fs.IntVar(&concurrency, "concurrency", 100, "maximum concurrent checks")
 	fs.StringVar(&timeoutRaw, "timeout", "10s", "per-request timeout")
 	fs.StringVar(&format, "format", "text", "output format: text or json")
@@ -127,6 +129,12 @@ func runCheck(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	reportWriter, closeReportWriter, err := openOutput(outputPath)
+	if err != nil {
+		return err
+	}
+	defer closeReportWriter()
+
 	checker := core.NewChecker(concurrency, timeout)
 	request := core.CheckRequest{
 		Keys:        keys,
@@ -140,7 +148,7 @@ func runCheck(args []string) error {
 	onEvent := func(event core.CheckEvent) {
 		results = append(results, event.Result)
 		if strings.EqualFold(format, "text") {
-			output.WriteTextEvent(os.Stdout, event.Index+1, len(keys), event.Result)
+			output.WriteTextEvent(reportWriter, event.Index+1, len(keys), event.Result)
 		}
 	}
 
@@ -155,9 +163,9 @@ func runCheck(args []string) error {
 
 	switch strings.ToLower(format) {
 	case "text":
-		output.WriteTextSummary(os.Stdout, summary)
+		output.WriteTextSummary(reportWriter, summary)
 	case "json":
-		if err := output.WriteJSONReport(os.Stdout, summary, results); err != nil {
+		if err := output.WriteJSONReport(reportWriter, summary, results); err != nil {
 			return err
 		}
 	default:
@@ -210,6 +218,21 @@ func openInput(path string) (io.Reader, func(), error) {
 	}, nil
 }
 
+func openOutput(path string) (io.Writer, func(), error) {
+	if path == "" {
+		return os.Stdout, func() {}, nil
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create output file: %w", err)
+	}
+
+	return file, func() {
+		_ = file.Close()
+	}, nil
+}
+
 func printUsage(w io.Writer) {
 	fmt.Fprintf(w, "%s %s\n", appmeta.Name, appmeta.Version)
 	fmt.Fprintln(w)
@@ -225,6 +248,7 @@ func printCheckUsage(w io.Writer) {
 	fmt.Fprintln(w, "check flags:")
 	fmt.Fprintln(w, "  --provider       Provider name (default: openai)")
 	fmt.Fprintln(w, "  --input          Read keys from file; stdin when omitted")
+	fmt.Fprintln(w, "  --output         Write the main report to file instead of stdout")
 	fmt.Fprintln(w, "  --concurrency    Maximum concurrent checks (default: 100)")
 	fmt.Fprintln(w, "  --timeout        Per-request timeout (default: 10s)")
 	fmt.Fprintln(w, "  --format         text or json (default: text)")
