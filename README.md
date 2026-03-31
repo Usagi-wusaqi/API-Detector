@@ -57,6 +57,8 @@ go run ./cmd/apidetect providers --format json
 go run ./cmd/apidetect version
 ```
 
+发行版构建会注入版本号、提交号和构建时间。
+
 从文件检测：
 
 ```bash

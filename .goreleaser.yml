@@ -12,6 +12,8 @@ builds:
     binary: apidetect
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/Usagi-wusaqi/API-Detector/internal/appmeta.Version={{ .Version }} -X github.com/Usagi-wusaqi/API-Detector/internal/appmeta.Commit={{ .Commit }} -X github.com/Usagi-wusaqi/API-Detector/internal/appmeta.BuildDate={{ .Date }}
     goos:
       - windows
       - linux

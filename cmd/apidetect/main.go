@@ -52,7 +52,7 @@ func run(args []string) error {
 	case "providers":
 		return runProviders(args[1:])
 	case "version", "-v", "--version":
-		fmt.Fprintln(os.Stdout, appmeta.Version)
+		fmt.Fprintf(os.Stdout, "%s\ncommit=%s\nbuild_date=%s\n", appmeta.Version, appmeta.Commit, appmeta.BuildDate)
 		return nil
 	case "-h", "--help", "help":
 		printUsage(os.Stdout)

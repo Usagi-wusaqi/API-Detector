@@ -23,8 +23,14 @@ func TestRunVersion(t *testing.T) {
 		}
 	})
 
-	if strings.TrimSpace(output) != appmeta.Version {
-		t.Fatalf("unexpected version output: got %q want %q", strings.TrimSpace(output), appmeta.Version)
+	if !strings.Contains(output, appmeta.Version) {
+		t.Fatalf("expected version output to contain %q, got %q", appmeta.Version, output)
+	}
+	if !strings.Contains(output, "commit=") {
+		t.Fatalf("expected version output to contain commit info: %q", output)
+	}
+	if !strings.Contains(output, "build_date=") {
+		t.Fatalf("expected version output to contain build date info: %q", output)
 	}
 }
 

@@ -184,7 +184,7 @@ func (p baseProvider) BuildRequest(ctx context.Context, key string) (*http.Reque
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Set("User-Agent", appmeta.UserAgent)
+	request.Header.Set("User-Agent", appmeta.UserAgent())
 	if p.header != nil {
 		p.header(key, request)
 	}
