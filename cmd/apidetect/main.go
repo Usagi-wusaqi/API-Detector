@@ -64,19 +64,21 @@ func runCheck(args []string) error {
 	fs.SetOutput(io.Discard)
 
 	var (
-		providerName string
-		inputPath    string
-		outputPath   string
-		concurrency  int
-		timeoutRaw   string
-		format       string
-		exportValid  string
-		customURL    string
-		customMethod string
-		failInvalid  bool
-		failError    bool
-		quiet        bool
-		headers      headerFlags
+		providerName  string
+		inputPath     string
+		outputPath    string
+		concurrency   int
+		timeoutRaw    string
+		format        string
+		exportValid   string
+		exportInvalid string
+		exportError   string
+		customURL     string
+		customMethod  string
+		failInvalid   bool
+		failError     bool
+		quiet         bool
+		headers       headerFlags
 	)
 
 	fs.StringVar(&providerName, "provider", "openai", "provider name")
@@ -86,6 +88,8 @@ func runCheck(args []string) error {
 	fs.StringVar(&timeoutRaw, "timeout", "10s", "per-request timeout")
 	fs.StringVar(&format, "format", "text", "output format: text or json")
 	fs.StringVar(&exportValid, "export-valid", "", "export valid raw keys to file")
+	fs.StringVar(&exportInvalid, "export-invalid", "", "export invalid raw keys to file")
+	fs.StringVar(&exportError, "export-error", "", "export error raw keys to file")
 	fs.StringVar(&customURL, "url", "", "custom endpoint URL")
 	fs.StringVar(&customMethod, "method", "GET", "custom HTTP method")
 	fs.BoolVar(&failInvalid, "fail-on-invalid", false, "return a non-zero exit code when invalid keys are found")
@@ -159,7 +163,17 @@ func runCheck(args []string) error {
 	results = orderedResults
 
 	if exportValid != "" {
-		if err := output.WriteValidKeys(exportValid, results); err != nil {
+		if err := output.WriteKeysByStatus(exportValid, results, core.StatusValid); err != nil {
+			return err
+		}
+	}
+	if exportInvalid != "" {
+		if err := output.WriteKeysByStatus(exportInvalid, results, core.StatusInvalid); err != nil {
+			return err
+		}
+	}
+	if exportError != "" {
+		if err := output.WriteKeysByStatus(exportError, results, core.StatusError); err != nil {
 			return err
 		}
 	}
@@ -279,6 +293,8 @@ func printCheckUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --timeout        Per-request timeout (default: 10s)")
 	fmt.Fprintln(w, "  --format         text or json (default: text)")
 	fmt.Fprintln(w, "  --export-valid   Export valid raw keys to file")
+	fmt.Fprintln(w, "  --export-invalid Export invalid raw keys to file")
+	fmt.Fprintln(w, "  --export-error   Export error raw keys to file")
 	fmt.Fprintln(w, "  --fail-on-invalid Return non-zero when invalid keys are found")
 	fmt.Fprintln(w, "  --fail-on-error  Return non-zero when error results are found")
 	fmt.Fprintln(w, "  --quiet          Suppress per-key text output and keep only the final summary")

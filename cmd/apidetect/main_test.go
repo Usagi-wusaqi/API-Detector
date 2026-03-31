@@ -184,6 +184,57 @@ func TestRunCheckQuietSuppressesPerKeyOutput(t *testing.T) {
 	}
 }
 
+func TestRunCheckExportsInvalidAndErrorKeys(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("key") {
+		case "sk-invalid":
+			w.WriteHeader(http.StatusUnauthorized)
+		case "sk-error":
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	tempDir := t.TempDir()
+	keysFile := filepath.Join(tempDir, "keys.txt")
+	invalidFile := filepath.Join(tempDir, "invalid.txt")
+	errorFile := filepath.Join(tempDir, "error.txt")
+
+	if err := os.WriteFile(keysFile, []byte("sk-valid\nsk-invalid\nsk-error\n"), 0o644); err != nil {
+		t.Fatalf("os.WriteFile returned error: %v", err)
+	}
+
+	err := runWithCapturedStdout(t, []string{
+		"check",
+		"--provider", "custom",
+		"--url", server.URL + "?key={key}",
+		"--input", keysFile,
+		"--export-invalid", invalidFile,
+		"--export-error", errorFile,
+	})
+	if err != nil {
+		t.Fatalf("run returned error: %v", err)
+	}
+
+	invalidContent, err := os.ReadFile(invalidFile)
+	if err != nil {
+		t.Fatalf("os.ReadFile invalid file returned error: %v", err)
+	}
+	if strings.TrimSpace(string(invalidContent)) != "sk-invalid" {
+		t.Fatalf("unexpected invalid export: %q", string(invalidContent))
+	}
+
+	errorContent, err := os.ReadFile(errorFile)
+	if err != nil {
+		t.Fatalf("os.ReadFile error file returned error: %v", err)
+	}
+	if strings.TrimSpace(string(errorContent)) != "sk-error" {
+		t.Fatalf("unexpected error export: %q", string(errorContent))
+	}
+}
+
 func runWithCapturedStdout(t *testing.T, args []string) error {
 	t.Helper()
 

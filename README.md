@@ -91,6 +91,8 @@ go run ./cmd/apidetect check --provider gemini --input keys.txt --format json
 - `--timeout`：单请求超时，默认 `10s`
 - `--format`：`text` 或 `json`
 - `--export-valid`：导出有效 key 到文件
+- `--export-invalid`：导出无效 key 到文件
+- `--export-error`：导出错误结果对应的 key 到文件
 - `--fail-on-invalid`：检测到无效 key 时返回非零退出码
 - `--fail-on-error`：检测结果里存在错误时返回非零退出码
 - `--quiet`：文本模式下不逐条输出结果，只保留最终汇总

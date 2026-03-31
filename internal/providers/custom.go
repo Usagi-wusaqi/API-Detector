@@ -33,6 +33,8 @@ func NewCustomBearerProvider(options BuildOptions) (core.Provider, error) {
 		method: method,
 		url:    url,
 		header: func(key string, request *http.Request) {
+			request.URL.RawQuery = strings.ReplaceAll(request.URL.RawQuery, "{key}", key)
+			request.URL.Path = strings.ReplaceAll(request.URL.Path, "{key}", key)
 			request.Header.Set("Authorization", "Bearer "+key)
 			for header, value := range headers {
 				request.Header.Set(header, value)

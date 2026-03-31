@@ -94,7 +94,7 @@ func WriteJSONReport(w io.Writer, summary core.CheckSummary, results []core.Chec
 	return encoder.Encode(report)
 }
 
-func WriteValidKeys(path string, results []core.CheckResult) error {
+func WriteKeysByStatus(path string, results []core.CheckResult, status core.Status) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("create export file: %w", err)
@@ -102,7 +102,7 @@ func WriteValidKeys(path string, results []core.CheckResult) error {
 	defer file.Close()
 
 	for _, result := range results {
-		if result.Status != core.StatusValid {
+		if result.Status != status {
 			continue
 		}
 		if _, err := fmt.Fprintln(file, result.Key); err != nil {
