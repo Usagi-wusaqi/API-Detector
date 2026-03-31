@@ -231,10 +231,22 @@ func (h *headerFlags) String() string {
 }
 
 func (h *headerFlags) Set(value string) error {
-	if strings.TrimSpace(value) == "" {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
 		return fmt.Errorf("header cannot be empty")
 	}
-	*h = append(*h, value)
+
+	parts := strings.SplitN(trimmed, ":", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("header must be in 'Name: Value' form")
+	}
+
+	name := strings.TrimSpace(parts[0])
+	if name == "" {
+		return fmt.Errorf("header name cannot be empty")
+	}
+
+	*h = append(*h, trimmed)
 	return nil
 }
 

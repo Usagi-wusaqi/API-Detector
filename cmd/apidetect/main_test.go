@@ -22,6 +22,25 @@ func TestRunVersion(t *testing.T) {
 	}
 }
 
+func TestHeaderFlagsSetRejectsInvalidHeader(t *testing.T) {
+	var headers headerFlags
+	if err := headers.Set("invalid-header"); err == nil {
+		t.Fatal("expected invalid header to return error")
+	}
+}
+
+func TestHeaderFlagsSetAcceptsValidHeader(t *testing.T) {
+	var headers headerFlags
+	if err := headers.Set("X-Test: 1"); err != nil {
+		t.Fatalf("Set returned error: %v", err)
+	}
+
+	values := headers.AsMap()
+	if got := values["X-Test"]; got != "1" {
+		t.Fatalf("unexpected header value: got %q want %q", got, "1")
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
