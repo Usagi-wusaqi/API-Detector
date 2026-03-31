@@ -1,93 +1,111 @@
-# ⚡ API Detector v2.0.0
+# API Detector v3.0.0
 
-跨平台高性能 AI 大模型 API Key 检测器
+用于批量检测 API Key 可用性的命令行工具。
 
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](https://dotnet.microsoft.com/)
-[![Avalonia](https://img.shields.io/badge/Avalonia-11.x-8B5CF6.svg)](https://avaloniaui.net/)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/Usagi-wusaqi/API-Detector)
+[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8.svg)](https://go.dev/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](https://github.com/Usagi-wusaqi/API-Detector)
 
-> 🚀 **C# + Avalonia 重构版** — 跨平台 GUI，单文件部署，双击即用！
+## 功能
 
-## ✨ 特性
+- 高并发批量检测
+- 支持中断取消
+- 支持文本输出和 JSON 输出
+- 支持导出有效 key
+- 默认脱敏输出，不在标准输出中暴露完整 key
 
-- 🌍 **跨平台支持** — Windows / macOS / Linux
-- ⚡ **高并发检测** — 支持 1000+ 并发连接
-- 🎨 **现代化 GUI** — Fluent 暗色主题
-- 📦 **单文件部署** — 无需安装运行时
-- 🔌 **多平台 API** — OpenAI / Claude / Gemini / DeepSeek 等
-- 📊 **实时统计** — 进度、速度、结果一目了然
-- 📁 **批量导入导出** — 支持文件加载和结果导出
+## 支持的 Provider
 
-## 🚀 快速开始
+- `openai` -> `https://api.openai.com/v1/models`
+- `groq` -> `https://api.groq.com/openai/v1/models`
+- `mistral` -> `https://api.mistral.ai/v1/models`
+- `deepseek` -> `https://api.deepseek.com/models`
+- `openrouter` -> `https://openrouter.ai/api/v1/models`
+- `anthropic` -> `https://api.anthropic.com/v1/messages`
+- `gemini` -> `https://generativelanguage.googleapis.com/v1beta/models`
+- `custom` -> 自定义 Bearer 鉴权端点
 
-### 使用方法（Windows）
+## 构建
 
-1. 下载源码（[Download ZIP](https://github.com/Usagi-wusaqi/API-Detector/archive/refs/heads/main.zip)）
-2. 解压后在根目录找到 `ApiDetector.exe`
-3. **双击 `ApiDetector.exe`** 即可运行，无需安装任何东西
-
-### 从源码编译（维护者）
-
-如需修改代码并提交，请先本地编译更新根目录产物：
-
-- Windows：双击 `build.bat`
-- 或手动执行：
 ```bash
-# 安装 .NET 8.0 SDK 后
-dotnet publish src/ApiDetector.csproj -c Release -r win-x64 -o . --self-contained true
+go build ./cmd/apidetect
 ```
 
-## 📖 使用说明
+## 基本用法
 
-1. **选择 API 预设** — 下拉选择 OpenAI / Claude / Gemini 等，或自定义端点
-2. **输入 API Keys** — 在左侧文本框输入，每行一个；或点击"加载文件"批量导入
-3. **调整参数** — 设置并发数（默认 100）和超时时间（默认 10s）
-4. **开始检测** — 点击"开始检测"按钮
-5. **查看结果** — 实时显示检测进度和结果
-6. **导出有效 Keys** — 点击"导出有效"保存到文件
+查看内置 Provider：
 
-## 🔌 支持的 API 平台
-
-| 平台 | 预设名称 | 测试端点 |
-|------|----------|----------|
-| OpenAI | OpenAI | `/v1/models` |
-| Anthropic | Anthropic Claude | `/v1/messages` |
-| Google | Google Gemini | `/v1beta/models` |
-| Groq | Groq | `/openai/v1/models` |
-| Mistral | Mistral | `/v1/models` |
-| DeepSeek | DeepSeek | `/v1/models` |
-| OpenRouter | OpenRouter | `/api/v1/models` |
-
-也可以选择"自定义"输入任意 API 端点。
-
-## 📁 项目结构
-
-```
-API-Detector/
-├── ApiDetector.exe         # 可执行文件 (双击运行)
-├── *.dll                   # 运行时依赖
-├── build.bat               # 编译脚本
-├── README.md               # 文档
-├── LICENSE                 # 许可证
-└── src/                    # 源码目录
-    ├── ApiDetector.csproj  # 项目配置
-    ├── Program.cs          # 入口
-    ├── App.axaml(.cs)      # 应用定义
-    ├── Models/             # 数据模型
-    ├── Services/           # 检测服务
-    ├── ViewModels/         # MVVM ViewModel
-    └── Views/              # 主界面
+```bash
+go run ./cmd/apidetect providers
 ```
 
-## 📊 技术栈
+从文件检测：
 
-- **语言**: C# 12 / .NET 8.0
-- **UI 框架**: Avalonia 11.x (跨平台)
-- **架构模式**: MVVM (CommunityToolkit.Mvvm)
-- **HTTP 客户端**: System.Net.Http
-- **主题**: Fluent Dark
+```bash
+go run ./cmd/apidetect check --provider openai --input example_keys.txt
+```
 
-## 📄 License
+从标准输入检测并导出有效 key：
+
+```bash
+cat keys.txt | go run ./cmd/apidetect check --provider openai --export-valid valid_keys.txt
+```
+
+使用自定义端点：
+
+```bash
+go run ./cmd/apidetect check \
+  --provider custom \
+  --url https://example.com/v1/models \
+  --method GET \
+  --header "X-Test: 1" \
+  --input keys.txt
+```
+
+输出 JSON：
+
+```bash
+go run ./cmd/apidetect check --provider gemini --input keys.txt --format json
+```
+
+## CLI 参数
+
+`apidetect check` 支持：
+
+- `--provider`：选择 provider
+- `--input`：输入文件路径；省略时从 `stdin` 读取
+- `--concurrency`：并发数，默认 `100`
+- `--timeout`：单请求超时，默认 `10s`
+- `--format`：`text` 或 `json`
+- `--export-valid`：导出有效 key 到文件
+- `--url`：自定义端点 URL，仅 `custom` 使用
+- `--method`：自定义 HTTP 方法，仅 `custom` 使用
+- `--header`：自定义请求头，可重复传入，仅 `custom` 使用
+
+## 输入规则
+
+- 每行一个 key
+- 空行会被忽略
+- 以 `#` 开头的行会被视为注释
+- 会自动去重，并保留首次出现顺序
+
+## 发布
+
+- `CI` 会在 Windows、Linux、macOS 上执行 `go test`、`go build` 和基础 smoke test
+- 打 tag 后由 `GoReleaser` 打包并上传到 GitHub Releases
+- 发行包为便携压缩包，包含二进制、`README.md`、`LICENSE`
+- macOS 当前为未签名发行包，首次运行可能需要手动放行
+
+## 仓库结构
+
+```text
+cmd/apidetect          CLI 入口
+internal/core          检测执行流、解析、类型定义
+internal/providers     Provider 适配器
+internal/output        输出和导出逻辑
+.github/workflows      CI 与发布流程
+```
+
+## License
 
 [GNU GPL-3.0](LICENSE)
