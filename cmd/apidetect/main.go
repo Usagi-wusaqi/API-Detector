@@ -74,6 +74,7 @@ func runCheck(args []string) error {
 		customMethod string
 		failInvalid  bool
 		failError    bool
+		quiet        bool
 		headers      headerFlags
 	)
 
@@ -88,6 +89,7 @@ func runCheck(args []string) error {
 	fs.StringVar(&customMethod, "method", "GET", "custom HTTP method")
 	fs.BoolVar(&failInvalid, "fail-on-invalid", false, "return a non-zero exit code when invalid keys are found")
 	fs.BoolVar(&failError, "fail-on-error", false, "return a non-zero exit code when errors are found")
+	fs.BoolVar(&quiet, "quiet", false, "suppress per-key text output and keep only the final summary")
 	fs.Var(&headers, "header", "custom header in 'Name: Value' form; may be repeated")
 
 	if err := fs.Parse(args); err != nil {
@@ -147,7 +149,7 @@ func runCheck(args []string) error {
 	var summary core.CheckSummary
 	onEvent := func(event core.CheckEvent) {
 		results = append(results, event.Result)
-		if strings.EqualFold(format, "text") {
+		if strings.EqualFold(format, "text") && !quiet {
 			output.WriteTextEvent(reportWriter, event.Index+1, len(keys), event.Result)
 		}
 	}
@@ -255,6 +257,7 @@ func printCheckUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --export-valid   Export valid raw keys to file")
 	fmt.Fprintln(w, "  --fail-on-invalid Return non-zero when invalid keys are found")
 	fmt.Fprintln(w, "  --fail-on-error  Return non-zero when error results are found")
+	fmt.Fprintln(w, "  --quiet          Suppress per-key text output and keep only the final summary")
 	fmt.Fprintln(w, "  --url            Custom endpoint URL")
 	fmt.Fprintln(w, "  --method         Custom HTTP method (default: GET)")
 	fmt.Fprintln(w, "  --header         Custom header in 'Name: Value' form; repeatable")

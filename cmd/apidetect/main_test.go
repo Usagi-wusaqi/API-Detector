@@ -137,6 +137,37 @@ func TestRunCheckWritesJSONReportToFile(t *testing.T) {
 	}
 }
 
+func TestRunCheckQuietSuppressesPerKeyOutput(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	keysFile := filepath.Join(t.TempDir(), "keys.txt")
+	if err := os.WriteFile(keysFile, []byte("sk-test\n"), 0o644); err != nil {
+		t.Fatalf("os.WriteFile returned error: %v", err)
+	}
+
+	output := captureStdout(t, func() {
+		if err := run([]string{
+			"check",
+			"--provider", "custom",
+			"--url", server.URL,
+			"--input", keysFile,
+			"--quiet",
+		}); err != nil {
+			t.Fatalf("run returned error: %v", err)
+		}
+	})
+
+	if strings.Contains(output, "[1/1]") {
+		t.Fatalf("expected quiet mode to suppress per-key output: %q", output)
+	}
+	if !strings.Contains(output, "Checked:") {
+		t.Fatalf("expected summary output in quiet mode: %q", output)
+	}
+}
+
 func runWithCapturedStdout(t *testing.T, args []string) error {
 	t.Helper()
 
