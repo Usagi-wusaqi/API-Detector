@@ -39,6 +39,12 @@ go build ./cmd/apidetect
 go run ./cmd/apidetect providers
 ```
 
+以 JSON 输出 Provider 列表：
+
+```bash
+go run ./cmd/apidetect providers --format json
+```
+
 查看版本：
 
 ```bash

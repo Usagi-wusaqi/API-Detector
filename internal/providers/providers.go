@@ -12,10 +12,10 @@ import (
 )
 
 type Metadata struct {
-	Name   string
-	Method string
-	URL    string
-	Notes  string
+	Name   string `json:"name"`
+	Method string `json:"method"`
+	URL    string `json:"url"`
+	Notes  string `json:"notes"`
 }
 
 type BuildOptions struct {

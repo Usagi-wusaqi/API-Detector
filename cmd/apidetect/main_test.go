@@ -26,6 +26,22 @@ func TestRunVersion(t *testing.T) {
 	}
 }
 
+func TestRunProvidersJSON(t *testing.T) {
+	output := captureStdout(t, func() {
+		if err := run([]string{"providers", "--format", "json"}); err != nil {
+			t.Fatalf("run returned error: %v", err)
+		}
+	})
+
+	var payload []map[string]any
+	if err := json.Unmarshal([]byte(output), &payload); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v\noutput=%s", err, output)
+	}
+	if len(payload) == 0 {
+		t.Fatal("expected providers in json output")
+	}
+}
+
 func TestHeaderFlagsSetRejectsInvalidHeader(t *testing.T) {
 	var headers headerFlags
 	if err := headers.Set("invalid-header"); err == nil {

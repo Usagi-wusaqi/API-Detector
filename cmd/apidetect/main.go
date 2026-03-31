@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -187,8 +188,18 @@ func runCheck(args []string) error {
 }
 
 func runProviders(args []string) error {
-	if len(args) > 0 {
-		return fmt.Errorf("providers does not accept arguments")
+	fs := flag.NewFlagSet("providers", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	var format string
+	fs.StringVar(&format, "format", "text", "output format: text or json")
+
+	if err := fs.Parse(args); err != nil {
+		printProvidersUsage(os.Stderr)
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("providers does not accept positional arguments")
 	}
 
 	entries := providers.Builtins()
@@ -196,11 +207,22 @@ func runProviders(args []string) error {
 		return entries[i].Name < entries[j].Name
 	})
 
-	for _, entry := range entries {
-		fmt.Fprintf(os.Stdout, "%-10s %-6s %s\n", entry.Name, entry.Method, entry.URL)
-		if entry.Notes != "" {
-			fmt.Fprintf(os.Stdout, "           %s\n", entry.Notes)
+	switch strings.ToLower(format) {
+	case "text":
+		for _, entry := range entries {
+			fmt.Fprintf(os.Stdout, "%-10s %-6s %s\n", entry.Name, entry.Method, entry.URL)
+			if entry.Notes != "" {
+				fmt.Fprintf(os.Stdout, "           %s\n", entry.Notes)
+			}
 		}
+	case "json":
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(entries); err != nil {
+			return fmt.Errorf("encode providers json: %w", err)
+		}
+	default:
+		return fmt.Errorf("unsupported providers format %q", format)
 	}
 	return nil
 }
@@ -240,10 +262,12 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  apidetect check [flags]")
-	fmt.Fprintln(w, "  apidetect providers")
+	fmt.Fprintln(w, "  apidetect providers [flags]")
 	fmt.Fprintln(w, "  apidetect version")
 	fmt.Fprintln(w)
 	printCheckUsage(w)
+	fmt.Fprintln(w)
+	printProvidersUsage(w)
 }
 
 func printCheckUsage(w io.Writer) {
@@ -261,6 +285,11 @@ func printCheckUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --url            Custom endpoint URL")
 	fmt.Fprintln(w, "  --method         Custom HTTP method (default: GET)")
 	fmt.Fprintln(w, "  --header         Custom header in 'Name: Value' form; repeatable")
+}
+
+func printProvidersUsage(w io.Writer) {
+	fmt.Fprintln(w, "providers flags:")
+	fmt.Fprintln(w, "  --format         text or json (default: text)")
 }
 
 type headerFlags []string
