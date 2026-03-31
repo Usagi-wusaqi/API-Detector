@@ -77,6 +77,7 @@ func runCheck(args []string) error {
 		customMethod   string
 		customBody     string
 		customBodyFile string
+		customAuthMode string
 		failInvalid    bool
 		failError      bool
 		quiet          bool
@@ -96,6 +97,7 @@ func runCheck(args []string) error {
 	fs.StringVar(&customMethod, "method", "GET", "custom HTTP method")
 	fs.StringVar(&customBody, "body", "", "custom HTTP request body")
 	fs.StringVar(&customBodyFile, "body-file", "", "read custom HTTP request body from file")
+	fs.StringVar(&customAuthMode, "auth-mode", "bearer", "custom auth mode: bearer or none")
 	fs.BoolVar(&failInvalid, "fail-on-invalid", false, "return a non-zero exit code when invalid keys are found")
 	fs.BoolVar(&failError, "fail-on-error", false, "return a non-zero exit code when errors are found")
 	fs.BoolVar(&quiet, "quiet", false, "suppress per-key text output and keep only the final summary")
@@ -139,10 +141,11 @@ func runCheck(args []string) error {
 	}
 
 	provider, err := providers.Resolve(providerName, providers.BuildOptions{
-		URL:     customURL,
-		Method:  customMethod,
-		Headers: headers.AsMap(),
-		Body:    customBody,
+		URL:      customURL,
+		Method:   customMethod,
+		Headers:  headers.AsMap(),
+		Body:     customBody,
+		AuthMode: customAuthMode,
 	})
 	if err != nil {
 		return err
@@ -315,6 +318,7 @@ func printCheckUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --quiet          Suppress per-key text output and keep only the final summary")
 	fmt.Fprintln(w, "  --url            Custom endpoint URL")
 	fmt.Fprintln(w, "  --method         Custom HTTP method (default: GET)")
+	fmt.Fprintln(w, "  --auth-mode      Custom auth mode: bearer or none")
 	fmt.Fprintln(w, "  --body           Custom HTTP request body")
 	fmt.Fprintln(w, "  --body-file      Read custom HTTP request body from file")
 	fmt.Fprintln(w, "  --header         Custom header in 'Name: Value' form; repeatable")

@@ -237,12 +237,14 @@ func TestRunCheckExportsInvalidAndErrorKeys(t *testing.T) {
 
 func TestRunCheckCustomBodyFile(t *testing.T) {
 	var requestBody string
+	var authorization string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			t.Fatalf("io.ReadAll returned error: %v", err)
 		}
 		requestBody = string(body)
+		authorization = r.Header.Get("Authorization")
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -271,6 +273,53 @@ func TestRunCheckCustomBodyFile(t *testing.T) {
 	}
 
 	if requestBody != `{"ping":true}` {
+		t.Fatalf("unexpected request body: %q", requestBody)
+	}
+	if authorization != "Bearer sk-test" {
+		t.Fatalf("unexpected authorization header: %q", authorization)
+	}
+}
+
+func TestRunCheckCustomNoBearerWithHeaderPlaceholder(t *testing.T) {
+	var authHeader string
+	var requestBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("io.ReadAll returned error: %v", err)
+		}
+		authHeader = r.Header.Get("x-api-key")
+		requestBody = string(body)
+		if got := r.Header.Get("Authorization"); got != "" {
+			t.Fatalf("expected Authorization header to be empty, got %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	keysFile := filepath.Join(t.TempDir(), "keys.txt")
+	if err := os.WriteFile(keysFile, []byte("sk-test\n"), 0o644); err != nil {
+		t.Fatalf("os.WriteFile keys returned error: %v", err)
+	}
+
+	err := runWithCapturedStdout(t, []string{
+		"check",
+		"--provider", "custom",
+		"--url", server.URL,
+		"--method", "POST",
+		"--auth-mode", "none",
+		"--header", "x-api-key: {key}",
+		"--body", `{"key":"{key}"}`,
+		"--input", keysFile,
+	})
+	if err != nil {
+		t.Fatalf("run returned error: %v", err)
+	}
+
+	if authHeader != "sk-test" {
+		t.Fatalf("unexpected x-api-key header: %q", authHeader)
+	}
+	if requestBody != `{"key":"sk-test"}` {
 		t.Fatalf("unexpected request body: %q", requestBody)
 	}
 }

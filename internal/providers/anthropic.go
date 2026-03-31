@@ -18,7 +18,7 @@ func NewAnthropicProvider() core.Provider {
 			request.Header.Set("anthropic-version", "2023-06-01")
 			request.Header.Set("Content-Type", "application/json")
 		},
-		body: func() string {
+		body: func(string) string {
 			return anthropicProbeBody
 		},
 	}

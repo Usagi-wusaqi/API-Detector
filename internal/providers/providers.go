@@ -19,10 +19,11 @@ type Metadata struct {
 }
 
 type BuildOptions struct {
-	URL     string
-	Method  string
-	Headers map[string]string
-	Body    string
+	URL      string
+	Method   string
+	Headers  map[string]string
+	Body     string
+	AuthMode string
 }
 
 type providerFactory func(BuildOptions) (core.Provider, error)
@@ -147,7 +148,7 @@ type baseProvider struct {
 	method string
 	url    string
 	header func(key string, request *http.Request)
-	body   func() string
+	body   func(key string) string
 }
 
 func (p baseProvider) Name() string {
@@ -157,7 +158,7 @@ func (p baseProvider) Name() string {
 func (p baseProvider) BuildRequest(ctx context.Context, key string) (*http.Request, error) {
 	var bodyReader *strings.Reader
 	if p.body != nil {
-		bodyReader = strings.NewReader(p.body())
+		bodyReader = strings.NewReader(p.body(key))
 	} else {
 		bodyReader = strings.NewReader("")
 	}
