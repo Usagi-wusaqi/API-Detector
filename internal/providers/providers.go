@@ -22,6 +22,7 @@ type BuildOptions struct {
 	URL     string
 	Method  string
 	Headers map[string]string
+	Body    string
 }
 
 type providerFactory func(BuildOptions) (core.Provider, error)

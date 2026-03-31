@@ -64,21 +64,23 @@ func runCheck(args []string) error {
 	fs.SetOutput(io.Discard)
 
 	var (
-		providerName  string
-		inputPath     string
-		outputPath    string
-		concurrency   int
-		timeoutRaw    string
-		format        string
-		exportValid   string
-		exportInvalid string
-		exportError   string
-		customURL     string
-		customMethod  string
-		failInvalid   bool
-		failError     bool
-		quiet         bool
-		headers       headerFlags
+		providerName   string
+		inputPath      string
+		outputPath     string
+		concurrency    int
+		timeoutRaw     string
+		format         string
+		exportValid    string
+		exportInvalid  string
+		exportError    string
+		customURL      string
+		customMethod   string
+		customBody     string
+		customBodyFile string
+		failInvalid    bool
+		failError      bool
+		quiet          bool
+		headers        headerFlags
 	)
 
 	fs.StringVar(&providerName, "provider", "openai", "provider name")
@@ -92,6 +94,8 @@ func runCheck(args []string) error {
 	fs.StringVar(&exportError, "export-error", "", "export error raw keys to file")
 	fs.StringVar(&customURL, "url", "", "custom endpoint URL")
 	fs.StringVar(&customMethod, "method", "GET", "custom HTTP method")
+	fs.StringVar(&customBody, "body", "", "custom HTTP request body")
+	fs.StringVar(&customBodyFile, "body-file", "", "read custom HTTP request body from file")
 	fs.BoolVar(&failInvalid, "fail-on-invalid", false, "return a non-zero exit code when invalid keys are found")
 	fs.BoolVar(&failError, "fail-on-error", false, "return a non-zero exit code when errors are found")
 	fs.BoolVar(&quiet, "quiet", false, "suppress per-key text output and keep only the final summary")
@@ -108,6 +112,16 @@ func runCheck(args []string) error {
 	}
 	if concurrency < 1 {
 		return fmt.Errorf("concurrency must be >= 1")
+	}
+	if customBody != "" && customBodyFile != "" {
+		return fmt.Errorf("--body and --body-file cannot be used together")
+	}
+	if customBodyFile != "" {
+		bodyBytes, err := os.ReadFile(customBodyFile)
+		if err != nil {
+			return fmt.Errorf("read body file: %w", err)
+		}
+		customBody = string(bodyBytes)
 	}
 
 	reader, closeFn, err := openInput(inputPath)
@@ -128,6 +142,7 @@ func runCheck(args []string) error {
 		URL:     customURL,
 		Method:  customMethod,
 		Headers: headers.AsMap(),
+		Body:    customBody,
 	})
 	if err != nil {
 		return err
@@ -300,6 +315,8 @@ func printCheckUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --quiet          Suppress per-key text output and keep only the final summary")
 	fmt.Fprintln(w, "  --url            Custom endpoint URL")
 	fmt.Fprintln(w, "  --method         Custom HTTP method (default: GET)")
+	fmt.Fprintln(w, "  --body           Custom HTTP request body")
+	fmt.Fprintln(w, "  --body-file      Read custom HTTP request body from file")
 	fmt.Fprintln(w, "  --header         Custom header in 'Name: Value' form; repeatable")
 }
 

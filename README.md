@@ -69,7 +69,8 @@ cat keys.txt | go run ./cmd/apidetect check --provider openai --export-valid val
 go run ./cmd/apidetect check \
   --provider custom \
   --url https://example.com/v1/models \
-  --method GET \
+  --method POST \
+  --body '{"ping":true}' \
   --header "X-Test: 1" \
   --input keys.txt
 ```
@@ -98,6 +99,8 @@ go run ./cmd/apidetect check --provider gemini --input keys.txt --format json
 - `--quiet`：文本模式下不逐条输出结果，只保留最终汇总
 - `--url`：自定义端点 URL，仅 `custom` 使用
 - `--method`：自定义 HTTP 方法，仅 `custom` 使用
+- `--body`：自定义请求体，仅 `custom` 使用
+- `--body-file`：从文件读取自定义请求体，仅 `custom` 使用
 - `--header`：自定义请求头，可重复传入，仅 `custom` 使用
 
 ## 输入规则

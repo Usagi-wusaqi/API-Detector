@@ -32,6 +32,9 @@ func NewCustomBearerProvider(options BuildOptions) (core.Provider, error) {
 		name:   "custom",
 		method: method,
 		url:    url,
+		body: func() string {
+			return options.Body
+		},
 		header: func(key string, request *http.Request) {
 			request.URL.RawQuery = strings.ReplaceAll(request.URL.RawQuery, "{key}", key)
 			request.URL.Path = strings.ReplaceAll(request.URL.Path, "{key}", key)

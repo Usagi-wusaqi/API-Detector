@@ -235,6 +235,46 @@ func TestRunCheckExportsInvalidAndErrorKeys(t *testing.T) {
 	}
 }
 
+func TestRunCheckCustomBodyFile(t *testing.T) {
+	var requestBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("io.ReadAll returned error: %v", err)
+		}
+		requestBody = string(body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	tempDir := t.TempDir()
+	keysFile := filepath.Join(tempDir, "keys.txt")
+	bodyFile := filepath.Join(tempDir, "body.json")
+
+	if err := os.WriteFile(keysFile, []byte("sk-test\n"), 0o644); err != nil {
+		t.Fatalf("os.WriteFile keys returned error: %v", err)
+	}
+	if err := os.WriteFile(bodyFile, []byte(`{"ping":true}`), 0o644); err != nil {
+		t.Fatalf("os.WriteFile body returned error: %v", err)
+	}
+
+	err := runWithCapturedStdout(t, []string{
+		"check",
+		"--provider", "custom",
+		"--url", server.URL,
+		"--method", "POST",
+		"--body-file", bodyFile,
+		"--input", keysFile,
+	})
+	if err != nil {
+		t.Fatalf("run returned error: %v", err)
+	}
+
+	if requestBody != `{"ping":true}` {
+		t.Fatalf("unexpected request body: %q", requestBody)
+	}
+}
+
 func runWithCapturedStdout(t *testing.T, args []string) error {
 	t.Helper()
 
