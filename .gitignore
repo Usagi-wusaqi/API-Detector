@@ -1,30 +1,18 @@
-# Rust 编译输出
-/target/
-Cargo.lock
-
-# Go 编译输出
+# Go outputs
 dist/
 .cache/
 apidetect
 apidetect.exe
 coverage.out
 
-# C# / .NET 编译输出
-bin/
-obj/
-publish/
-*.user
-*.suo
-
-
-# 检测结果文件 (包含敏感信息)
+# Detection outputs
 api_check_results_*.json
 valid_keys_*.txt
 invalid_keys_*.txt
 error_keys_*.txt
 report_*.txt
 
-# API Keys 文件 (敏感信息，绝对不能上传)
+# API key files
 5w-sk.txt
 api_keys.txt
 keys.txt
@@ -33,68 +21,38 @@ keys.txt
 *-keys.txt
 temp_keys.txt
 
-# 但保留示例文件
+# Keep example input
 !example_keys.txt
 
-# Python 相关
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-# dist/ 已在上面排除
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# 系统文件
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# IDE 文件
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# 日志文件
+# Logs and temp files
 *.log
 logs/
-
-# 临时文件
 *.tmp
 *.temp
-.cache/
 
-# 环境变量文件
+# Environment files
 .env
 .env.local
 .env.*.local
 
-# 备份文件
+# Backup files
 *.bak
 *.backup
 
-# 压缩文件
+# Archives
 *.zip
 *.tar.gz
 *.rar
 *.7z
 
-# Windows 特定
-*.exe.config
-*.exe.manifest
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
