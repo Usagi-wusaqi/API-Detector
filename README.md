@@ -25,6 +25,12 @@
 - `gemini` -> `https://generativelanguage.googleapis.com/v1beta/models`
 - `custom` -> 自定义 Bearer 鉴权端点
 
+常用别名：
+
+- `claude` -> `anthropic`
+- `google` -> `gemini`
+- `or` -> `openrouter`
+
 ## 构建
 
 ```bash

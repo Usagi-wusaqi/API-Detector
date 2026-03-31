@@ -52,3 +52,14 @@ func TestResolveCustomProviderRequiresURL(t *testing.T) {
 		t.Fatal("expected Resolve to require custom URL")
 	}
 }
+
+func TestResolveProviderAlias(t *testing.T) {
+	provider, err := Resolve("claude", BuildOptions{})
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+
+	if provider.Name() != "anthropic" {
+		t.Fatalf("unexpected provider name: got %q want %q", provider.Name(), "anthropic")
+	}
+}

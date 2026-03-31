@@ -12,10 +12,11 @@ import (
 )
 
 type Metadata struct {
-	Name   string `json:"name"`
-	Method string `json:"method"`
-	URL    string `json:"url"`
-	Notes  string `json:"notes"`
+	Name    string   `json:"name"`
+	Aliases []string `json:"aliases,omitempty"`
+	Method  string   `json:"method"`
+	URL     string   `json:"url"`
+	Notes   string   `json:"notes"`
 }
 
 type BuildOptions struct {
@@ -36,10 +37,11 @@ type catalogEntry struct {
 var catalog = map[string]catalogEntry{
 	"anthropic": {
 		meta: Metadata{
-			Name:   "anthropic",
-			Method: http.MethodPost,
-			URL:    "https://api.anthropic.com/v1/messages",
-			Notes:  "Uses x-api-key and anthropic-version headers.",
+			Name:    "anthropic",
+			Aliases: []string{"claude"},
+			Method:  http.MethodPost,
+			URL:     "https://api.anthropic.com/v1/messages",
+			Notes:   "Uses x-api-key and anthropic-version headers.",
 		},
 		factory: func(BuildOptions) (core.Provider, error) {
 			return NewAnthropicProvider(), nil
@@ -47,10 +49,11 @@ var catalog = map[string]catalogEntry{
 	},
 	"gemini": {
 		meta: Metadata{
-			Name:   "gemini",
-			Method: http.MethodGet,
-			URL:    "https://generativelanguage.googleapis.com/v1beta/models",
-			Notes:  "Uses x-goog-api-key header.",
+			Name:    "gemini",
+			Aliases: []string{"google"},
+			Method:  http.MethodGet,
+			URL:     "https://generativelanguage.googleapis.com/v1beta/models",
+			Notes:   "Uses x-goog-api-key header.",
 		},
 		factory: func(BuildOptions) (core.Provider, error) {
 			return NewGeminiProvider(), nil
@@ -102,10 +105,11 @@ var catalog = map[string]catalogEntry{
 	},
 	"openrouter": {
 		meta: Metadata{
-			Name:   "openrouter",
-			Method: http.MethodGet,
-			URL:    "https://openrouter.ai/api/v1/models",
-			Notes:  "OpenRouter models endpoint.",
+			Name:    "openrouter",
+			Aliases: []string{"or"},
+			Method:  http.MethodGet,
+			URL:     "https://openrouter.ai/api/v1/models",
+			Notes:   "OpenRouter models endpoint.",
 		},
 		factory: func(BuildOptions) (core.Provider, error) {
 			return NewOpenAICompatibleProvider("openrouter", "https://openrouter.ai/api/v1/models"), nil
@@ -136,7 +140,20 @@ func Builtins() []Metadata {
 }
 
 func Resolve(name string, options BuildOptions) (core.Provider, error) {
-	entry, ok := catalog[strings.ToLower(strings.TrimSpace(name))]
+	normalized := strings.ToLower(strings.TrimSpace(name))
+	if entry, ok := catalog[normalized]; ok {
+		return entry.factory(options)
+	}
+
+	for _, entry := range catalog {
+		for _, alias := range entry.meta.Aliases {
+			if normalized == strings.ToLower(alias) {
+				return entry.factory(options)
+			}
+		}
+	}
+
+	entry, ok := catalog[normalized]
 	if !ok {
 		return nil, fmt.Errorf("unknown provider %q", name)
 	}

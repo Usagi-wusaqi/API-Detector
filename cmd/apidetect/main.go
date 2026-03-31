@@ -262,6 +262,9 @@ func runProviders(args []string) error {
 	case "text":
 		for _, entry := range entries {
 			fmt.Fprintf(os.Stdout, "%-10s %-6s %s\n", entry.Name, entry.Method, entry.URL)
+			if len(entry.Aliases) > 0 {
+				fmt.Fprintf(os.Stdout, "           aliases: %s\n", strings.Join(entry.Aliases, ", "))
+			}
 			if entry.Notes != "" {
 				fmt.Fprintf(os.Stdout, "           %s\n", entry.Notes)
 			}
