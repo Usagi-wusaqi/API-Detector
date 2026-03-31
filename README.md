@@ -131,6 +131,14 @@ go run ./cmd/apidetect check --provider gemini --input keys.txt --format json
 - 发行包为便携压缩包，包含二进制、`README.md`、`LICENSE`
 - macOS 当前为未签名发行包，首次运行可能需要手动放行
 
+## 退出码
+
+- `0`：执行成功
+- `2`：命令行参数错误
+- `3`：启用 `--fail-on-invalid` 时检测到无效 key
+- `4`：启用 `--fail-on-error` 时检测结果存在错误
+- `130`：用户取消执行
+
 ## 仓库结构
 
 ```text

@@ -15,20 +15,24 @@ import (
 	"time"
 
 	"github.com/Usagi-wusaqi/API-Detector/internal/appmeta"
+	"github.com/Usagi-wusaqi/API-Detector/internal/clierror"
 	"github.com/Usagi-wusaqi/API-Detector/internal/core"
 	"github.com/Usagi-wusaqi/API-Detector/internal/output"
 	"github.com/Usagi-wusaqi/API-Detector/internal/providers"
 )
-
-var errCanceled = errors.New("operation canceled")
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return
 		}
-		if errors.Is(err, errCanceled) {
-			os.Exit(130)
+
+		var exitErr clierror.ExitError
+		if errors.As(err, &exitErr) {
+			if exitErr.Err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", exitErr.Err)
+			}
+			os.Exit(exitErr.Code)
 		}
 
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -55,7 +59,10 @@ func run(args []string) error {
 		return nil
 	default:
 		printUsage(os.Stderr)
-		return fmt.Errorf("unknown command %q", args[0])
+		return clierror.ExitError{
+			Code: 2,
+			Err:  fmt.Errorf("unknown command %q", args[0]),
+		}
 	}
 }
 
@@ -105,7 +112,7 @@ func runCheck(args []string) error {
 
 	if err := fs.Parse(args); err != nil {
 		printCheckUsage(os.Stderr)
-		return err
+		return clierror.ExitError{Code: 2, Err: err}
 	}
 
 	timeout, err := time.ParseDuration(timeoutRaw)
@@ -208,13 +215,22 @@ func runCheck(args []string) error {
 	}
 
 	if errors.Is(runErr, context.Canceled) {
-		return errCanceled
+		return clierror.ExitError{
+			Code: 130,
+			Err:  errors.New("operation canceled"),
+		}
 	}
 	if failInvalid && summary.Invalid > 0 {
-		return fmt.Errorf("found %d invalid key(s)", summary.Invalid)
+		return clierror.ExitError{
+			Code: 3,
+			Err:  fmt.Errorf("found %d invalid key(s)", summary.Invalid),
+		}
 	}
 	if failError && summary.Error > 0 {
-		return fmt.Errorf("found %d error result(s)", summary.Error)
+		return clierror.ExitError{
+			Code: 4,
+			Err:  fmt.Errorf("found %d error result(s)", summary.Error),
+		}
 	}
 	return runErr
 }
@@ -228,10 +244,13 @@ func runProviders(args []string) error {
 
 	if err := fs.Parse(args); err != nil {
 		printProvidersUsage(os.Stderr)
-		return err
+		return clierror.ExitError{Code: 2, Err: err}
 	}
 	if fs.NArg() > 0 {
-		return fmt.Errorf("providers does not accept positional arguments")
+		return clierror.ExitError{
+			Code: 2,
+			Err:  fmt.Errorf("providers does not accept positional arguments"),
+		}
 	}
 
 	entries := providers.Builtins()

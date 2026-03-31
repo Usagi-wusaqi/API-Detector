@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/Usagi-wusaqi/API-Detector/internal/appmeta"
+	"github.com/Usagi-wusaqi/API-Detector/internal/clierror"
 )
 
 func TestRunVersion(t *testing.T) {
@@ -82,8 +84,12 @@ func TestRunCheckFailOnInvalid(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected fail-on-invalid to return an error")
 	}
-	if !strings.Contains(err.Error(), "invalid key") {
-		t.Fatalf("unexpected error: %v", err)
+	var exitErr clierror.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("expected ExitError, got %T", err)
+	}
+	if exitErr.Code != 3 {
+		t.Fatalf("unexpected exit code: got %d want 3", exitErr.Code)
 	}
 }
 
@@ -108,8 +114,12 @@ func TestRunCheckFailOnError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected fail-on-error to return an error")
 	}
-	if !strings.Contains(err.Error(), "error result") {
-		t.Fatalf("unexpected error: %v", err)
+	var exitErr clierror.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("expected ExitError, got %T", err)
+	}
+	if exitErr.Code != 4 {
+		t.Fatalf("unexpected exit code: got %d want 4", exitErr.Code)
 	}
 }
 
