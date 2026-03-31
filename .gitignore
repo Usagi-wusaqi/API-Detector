@@ -2,6 +2,13 @@
 /target/
 Cargo.lock
 
+# Go 编译输出
+dist/
+.cache/
+apidetect
+apidetect.exe
+coverage.out
+
 # C# / .NET 编译输出
 bin/
 obj/
