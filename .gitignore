@@ -1,8 +1,8 @@
 # Go outputs
 dist/
 .cache/
-apidetect
-apidetect.exe
+/apidetect
+/apidetect.exe
 coverage.out
 
 # Detection outputs
