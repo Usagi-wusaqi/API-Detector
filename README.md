@@ -84,6 +84,8 @@ go run ./cmd/apidetect check --provider gemini --input keys.txt --format json
 - `--timeout`：单请求超时，默认 `10s`
 - `--format`：`text` 或 `json`
 - `--export-valid`：导出有效 key 到文件
+- `--fail-on-invalid`：检测到无效 key 时返回非零退出码
+- `--fail-on-error`：检测结果里存在错误时返回非零退出码
 - `--url`：自定义端点 URL，仅 `custom` 使用
 - `--method`：自定义 HTTP 方法，仅 `custom` 使用
 - `--header`：自定义请求头，可重复传入，仅 `custom` 使用

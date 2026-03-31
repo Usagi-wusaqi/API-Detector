@@ -71,6 +71,8 @@ func runCheck(args []string) error {
 		exportValid  string
 		customURL    string
 		customMethod string
+		failInvalid  bool
+		failError    bool
 		headers      headerFlags
 	)
 
@@ -82,6 +84,8 @@ func runCheck(args []string) error {
 	fs.StringVar(&exportValid, "export-valid", "", "export valid raw keys to file")
 	fs.StringVar(&customURL, "url", "", "custom endpoint URL")
 	fs.StringVar(&customMethod, "method", "GET", "custom HTTP method")
+	fs.BoolVar(&failInvalid, "fail-on-invalid", false, "return a non-zero exit code when invalid keys are found")
+	fs.BoolVar(&failError, "fail-on-error", false, "return a non-zero exit code when errors are found")
 	fs.Var(&headers, "header", "custom header in 'Name: Value' form; may be repeated")
 
 	if err := fs.Parse(args); err != nil {
@@ -163,6 +167,12 @@ func runCheck(args []string) error {
 	if errors.Is(runErr, context.Canceled) {
 		return errCanceled
 	}
+	if failInvalid && summary.Invalid > 0 {
+		return fmt.Errorf("found %d invalid key(s)", summary.Invalid)
+	}
+	if failError && summary.Error > 0 {
+		return fmt.Errorf("found %d error result(s)", summary.Error)
+	}
 	return runErr
 }
 
@@ -219,6 +229,8 @@ func printCheckUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --timeout        Per-request timeout (default: 10s)")
 	fmt.Fprintln(w, "  --format         text or json (default: text)")
 	fmt.Fprintln(w, "  --export-valid   Export valid raw keys to file")
+	fmt.Fprintln(w, "  --fail-on-invalid Return non-zero when invalid keys are found")
+	fmt.Fprintln(w, "  --fail-on-error  Return non-zero when error results are found")
 	fmt.Fprintln(w, "  --url            Custom endpoint URL")
 	fmt.Fprintln(w, "  --method         Custom HTTP method (default: GET)")
 	fmt.Fprintln(w, "  --header         Custom header in 'Name: Value' form; repeatable")
