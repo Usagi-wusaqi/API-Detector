@@ -37,6 +37,18 @@
 go build ./cmd/apidetect
 ```
 
+Windows 也可以直接运行：
+
+```powershell
+.\build.ps1
+```
+
+或：
+
+```bat
+build.bat
+```
+
 ## 基本用法
 
 查看内置 Provider：
