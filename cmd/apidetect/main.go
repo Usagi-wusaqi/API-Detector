@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Usagi-wusaqi/API-Detector/internal/appmeta"
 	"github.com/Usagi-wusaqi/API-Detector/internal/core"
 	"github.com/Usagi-wusaqi/API-Detector/internal/output"
 	"github.com/Usagi-wusaqi/API-Detector/internal/providers"
@@ -45,6 +46,9 @@ func run(args []string) error {
 		return runCheck(args[1:])
 	case "providers":
 		return runProviders(args[1:])
+	case "version", "-v", "--version":
+		fmt.Fprintln(os.Stdout, appmeta.Version)
+		return nil
 	case "-h", "--help", "help":
 		printUsage(os.Stdout)
 		return nil
@@ -197,11 +201,12 @@ func openInput(path string) (io.Reader, func(), error) {
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprintln(w, "apidetect - batch API key detector")
+	fmt.Fprintf(w, "%s %s\n", appmeta.Name, appmeta.Version)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  apidetect check [flags]")
 	fmt.Fprintln(w, "  apidetect providers")
+	fmt.Fprintln(w, "  apidetect version")
 	fmt.Fprintln(w)
 	printCheckUsage(w)
 }

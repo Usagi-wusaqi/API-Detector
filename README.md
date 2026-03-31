@@ -39,6 +39,12 @@ go build ./cmd/apidetect
 go run ./cmd/apidetect providers
 ```
 
+查看版本：
+
+```bash
+go run ./cmd/apidetect version
+```
+
 从文件检测：
 
 ```bash

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Usagi-wusaqi/API-Detector/internal/appmeta"
 	"github.com/Usagi-wusaqi/API-Detector/internal/core"
 )
 
@@ -164,7 +165,7 @@ func (p baseProvider) BuildRequest(ctx context.Context, key string) (*http.Reque
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Set("User-Agent", "apidetect/0.1")
+	request.Header.Set("User-Agent", appmeta.UserAgent)
 	if p.header != nil {
 		p.header(key, request)
 	}
