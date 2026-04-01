@@ -49,6 +49,12 @@ Windows 也可以直接运行：
 build.bat
 ```
 
+Linux / macOS 可以运行：
+
+```bash
+./build.sh
+```
+
 ## 基本用法
 
 查看内置 Provider：
