@@ -2,7 +2,9 @@ const state = {
   providers: [],
   jobId: null,
   eventSource: null,
+  jobs: [],
   results: [],
+  filteredResults: [],
   summary: { total: 0, checked: 0, valid: 0, invalid: 0, error: 0, canceled: 0, keys_per_second: 0 },
 };
 
@@ -33,6 +35,11 @@ const elements = {
   summaryRate: document.getElementById("summary-rate"),
   progressFill: document.getElementById("progress-fill"),
   progressText: document.getElementById("progress-text"),
+  statusFilter: document.getElementById("status-filter"),
+  sortOrder: document.getElementById("sort-order"),
+  searchQuery: document.getElementById("search-query"),
+  jobHistory: document.getElementById("job-history"),
+  refreshHistory: document.getElementById("refresh-history"),
 };
 
 async function loadProviders() {
@@ -74,7 +81,33 @@ function updateSummary(summary) {
 
 function renderResults() {
   elements.resultsBody.innerHTML = "";
-  for (const result of state.results) {
+  const query = elements.searchQuery.value.trim().toLowerCase();
+  const status = elements.statusFilter.value;
+  const sort = elements.sortOrder.value;
+
+  state.filteredResults = state.results.filter((result) => {
+    if (status !== "all" && result.status !== status) {
+      return false;
+    }
+    if (!query) {
+      return true;
+    }
+    return [
+      result.masked_key,
+      result.key,
+      result.status,
+      result.reason,
+      result.message,
+    ].some((value) => String(value || "").toLowerCase().includes(query));
+  });
+
+  state.filteredResults.sort((left, right) => {
+    if (sort === "latency_desc") return (right.latency_ms || 0) - (left.latency_ms || 0);
+    if (sort === "latency_asc") return (left.latency_ms || 0) - (right.latency_ms || 0);
+    return (left.index || 0) - (right.index || 0);
+  });
+
+  for (const result of state.filteredResults) {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td class="status-${result.status}">${result.status}</td>
@@ -89,6 +122,35 @@ function renderResults() {
   elements.exportValid.disabled = state.results.every((item) => item.status !== "valid");
   elements.exportInvalid.disabled = state.results.every((item) => item.status !== "invalid");
   elements.exportError.disabled = state.results.every((item) => item.status !== "error");
+}
+
+function renderHistory() {
+  elements.jobHistory.innerHTML = "";
+  if (!state.jobs.length) {
+    elements.jobHistory.textContent = "暂无任务";
+    elements.jobHistory.classList.add("empty");
+    return;
+  }
+
+  elements.jobHistory.classList.remove("empty");
+  for (const job of state.jobs) {
+    const button = document.createElement("button");
+    button.className = `job-card${job.id === state.jobId ? " active" : ""}`;
+    button.innerHTML = `
+      <div class="job-card-row">
+        <span>${job.status}</span>
+        <span>${new Date(job.started_at).toLocaleString()}</span>
+      </div>
+      <strong>${job.summary.checked}/${job.summary.total} checked</strong>
+      <div class="job-card-row">
+        <span>valid ${job.summary.valid}</span>
+        <span>invalid ${job.summary.invalid}</span>
+        <span>error ${job.summary.error}</span>
+      </div>
+    `;
+    button.addEventListener("click", () => loadJobSnapshot(job.id));
+    elements.jobHistory.appendChild(button);
+  }
 }
 
 function downloadStatus(status, filename) {
@@ -187,17 +249,17 @@ async function cancelJob() {
   await fetch(`/api/jobs/${state.jobId}/cancel`, { method: "POST" });
 }
 
-async function restoreLatestJob() {
+async function refreshHistory() {
   const response = await fetch("/api/jobs");
   if (!response.ok) return;
-
   const jobs = await response.json();
-  if (!Array.isArray(jobs) || !jobs.length) return;
+  state.jobs = Array.isArray(jobs) ? jobs : [];
+  state.jobs.sort((left, right) => new Date(right.started_at).getTime() - new Date(left.started_at).getTime());
+  renderHistory();
+}
 
-  jobs.sort((left, right) => new Date(right.started_at).getTime() - new Date(left.started_at).getTime());
-  const latest = jobs[0];
-
-  const snapshotResponse = await fetch(`/api/jobs/${latest.id}`);
+async function loadJobSnapshot(jobId) {
+  const snapshotResponse = await fetch(`/api/jobs/${jobId}`);
   if (!snapshotResponse.ok) return;
 
   const snapshot = await snapshotResponse.json();
@@ -205,15 +267,22 @@ async function restoreLatestJob() {
   state.results = snapshot.results || [];
   updateSummary(snapshot.summary || state.summary);
   renderResults();
+  renderHistory();
 
   if (snapshot.status === "running") {
     setRunning(true);
     connectEvents(snapshot.id);
   } else {
+    setRunning(false);
     elements.statusPill.textContent = snapshot.status === "done" ? "已完成" : snapshot.status;
     elements.statusPill.className = "status-pill done";
-    setRunning(false);
   }
+}
+
+async function restoreLatestJob() {
+  await refreshHistory();
+  if (!state.jobs.length) return;
+  await loadJobSnapshot(state.jobs[0].id);
 }
 
 function wireFileImport() {
@@ -231,6 +300,10 @@ function wireActions() {
   elements.exportValid.addEventListener("click", () => downloadStatus("valid", "valid_keys.txt"));
   elements.exportInvalid.addEventListener("click", () => downloadStatus("invalid", "invalid_keys.txt"));
   elements.exportError.addEventListener("click", () => downloadStatus("error", "error_keys.txt"));
+  elements.refreshHistory.addEventListener("click", refreshHistory);
+  elements.statusFilter.addEventListener("change", renderResults);
+  elements.sortOrder.addEventListener("change", renderResults);
+  elements.searchQuery.addEventListener("input", renderResults);
 }
 
 async function init() {
