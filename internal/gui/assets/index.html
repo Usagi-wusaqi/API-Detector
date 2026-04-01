@@ -78,12 +78,32 @@
               </div>
             </label>
             <label>
-              <span class="field-title">输出格式 (Output Format)</span>
+              <span class="field-title with-action">
+                <span>输出格式 (Output Format)</span>
+                <button id="format-advanced-trigger" class="ghost tiny" type="button">高级设置</button>
+              </span>
               <select id="format">
                 <option value="text">文本 (text)</option>
                 <option value="json">JSON (json)</option>
+                <option value="custom">自定义 (custom)</option>
               </select>
             </label>
+          </div>
+
+          <div id="format-advanced-drawer" class="advanced-drawer hidden" role="dialog" aria-modal="true" aria-labelledby="format-advanced-title">
+            <div class="advanced-dialog advanced-dialog-sm">
+              <div class="advanced-dialog-header">
+                <h3 id="format-advanced-title">输出格式高级设置</h3>
+                <button id="format-advanced-close" class="ghost tiny" type="button">关闭</button>
+              </div>
+              <p id="format-advanced-note" class="advanced-hint"></p>
+              <div class="advanced-grid">
+                <label>
+                  <span>文件尾缀 (可选)</span>
+                  <input id="format-suffix" type="text" placeholder="例如 log 或 json" />
+                </label>
+              </div>
+            </div>
           </div>
 
           <div id="proxy-advanced-drawer" class="advanced-drawer hidden" role="dialog" aria-modal="true" aria-labelledby="proxy-advanced-title">
@@ -135,7 +155,7 @@
 
           <label class="keys-block">
             <span>Keys</span>
-            <textarea id="keys" rows="14" placeholder="每行一个 key"></textarea>
+            <textarea id="keys" rows="10" placeholder="每行一个 key"></textarea>
           </label>
 
           <div class="button-row">

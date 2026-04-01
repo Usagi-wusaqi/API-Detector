@@ -6,6 +6,7 @@ const state = {
   results: [],
   filteredResults: [],
   currentPage: 1,
+  lastFormat: "text",
   summary: { total: 0, checked: 0, valid: 0, invalid: 0, error: 0, canceled: 0, keys_per_second: 0 },
 };
 
@@ -26,12 +27,17 @@ const elements = {
   customAuthMode: document.getElementById("custom-auth-mode"),
   customHeaders: document.getElementById("custom-headers"),
   customBody: document.getElementById("custom-body"),
+  formatAdvancedDrawer: document.getElementById("format-advanced-drawer"),
   proxyAdvancedDrawer: document.getElementById("proxy-advanced-drawer"),
   providerAdvancedDrawer: document.getElementById("provider-advanced-drawer"),
+  formatAdvancedTrigger: document.getElementById("format-advanced-trigger"),
   proxyAdvancedTrigger: document.getElementById("proxy-advanced-trigger"),
   providerAdvancedTrigger: document.getElementById("provider-advanced-trigger"),
+  formatAdvancedClose: document.getElementById("format-advanced-close"),
   proxyAdvancedClose: document.getElementById("proxy-advanced-close"),
   providerAdvancedClose: document.getElementById("provider-advanced-close"),
+  formatAdvancedNote: document.getElementById("format-advanced-note"),
+  formatSuffix: document.getElementById("format-suffix"),
   proxyModeNote: document.getElementById("proxy-mode-note"),
   providerAdvancedNote: document.getElementById("provider-advanced-note"),
   spinboxButtons: Array.from(document.querySelectorAll(".spinbox-button")),
@@ -289,15 +295,95 @@ function toggleHistory() {
   elements.toggleHistory.textContent = collapsed ? "展开" : "收起";
 }
 
-function downloadStatus(status, filename) {
+function defaultSuffixForFormat(format) {
+  if (format === "custom") {
+    return "log";
+  }
+  return format === "json" ? "json" : "txt";
+}
+
+function effectiveExportFormat() {
+  if (elements.format.value !== "custom") {
+    return elements.format.value;
+  }
+  const suffix = normalizeSuffix(elements.formatSuffix.value);
+  return suffix === "json" ? "json" : "text";
+}
+
+function normalizeSuffix(value) {
+  const trimmed = String(value || "").trim().replace(/^\.+/, "");
+  const safe = trimmed.replace(/[^A-Za-z0-9_-]/g, "");
+  return safe.toLowerCase();
+}
+
+function activeSuffix() {
+  if (elements.format.value === "custom") {
+    const custom = normalizeSuffix(elements.formatSuffix.value);
+    if (custom) {
+      return custom;
+    }
+  }
+  return defaultSuffixForFormat(elements.format.value);
+}
+
+function buildFilename(baseName) {
+  return `${baseName}.${activeSuffix()}`;
+}
+
+function buildStatusExportPayload(status) {
+  const targetResults = state.results.filter((result) => result.status === status);
+  if (effectiveExportFormat() === "json") {
+    return {
+      content: JSON.stringify(targetResults.map((item) => item.key), null, 2),
+      contentType: "application/json;charset=utf-8",
+    };
+  }
+  return {
+    content: `${targetResults.map((item) => item.key).join("\n")}${targetResults.length ? "\n" : ""}`,
+    contentType: "text/plain;charset=utf-8",
+  };
+}
+
+function downloadContent(content, filename, contentType) {
+  const blob = new Blob([content], { type: contentType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadStatus(status, baseName) {
   if (!state.jobId) return;
-  const url = `/api/jobs/${state.jobId}/results?status=${encodeURIComponent(status)}`;
-  downloadUrl(url, filename);
+  const payload = buildStatusExportPayload(status);
+  downloadContent(payload.content, buildFilename(baseName), payload.contentType);
 }
 
 function downloadReport() {
   if (!state.jobId) return;
-  downloadUrl(`/api/jobs/${state.jobId}/report`, `job_${state.jobId}_report.json`);
+  if (effectiveExportFormat() === "json") {
+    const payload = {
+      id: state.jobId,
+      summary: state.summary,
+      results: state.results,
+      exported_at: new Date().toISOString(),
+    };
+    downloadContent(JSON.stringify(payload, null, 2), buildFilename(`job_${state.jobId}_report`), "application/json;charset=utf-8");
+    return;
+  }
+
+  const lines = [
+    `job_id: ${state.jobId}`,
+    `exported_at: ${new Date().toISOString()}`,
+    `summary: total=${state.summary.total} checked=${state.summary.checked} valid=${state.summary.valid} invalid=${state.summary.invalid} error=${state.summary.error}`,
+    "",
+    "results:",
+  ];
+  for (const item of state.results) {
+    lines.push(`${item.index}. [${item.status}] ${item.key} http=${item.http_status ?? 0} latency=${item.latency_ms ?? 0}ms ${item.message || ""}`);
+  }
+  downloadContent(`${lines.join("\n")}\n`, buildFilename(`job_${state.jobId}_report`), "text/plain;charset=utf-8");
 }
 
 function downloadUrl(url, filename) {
@@ -506,6 +592,7 @@ function resetSettings() {
   elements.concurrency.value = "100";
   elements.timeout.value = "10s";
   elements.format.value = "text";
+  elements.formatSuffix.value = defaultSuffixForFormat(elements.format.value);
   elements.pageSize.value = "50";
   elements.proxyMode.value = "env";
   elements.proxyUrl.value = "";
@@ -520,8 +607,11 @@ function resetSettings() {
   syncCustomPanel();
   syncEndpointField();
   syncProxyPanel();
+  applyFormatChange(elements.format.value);
+  elements.formatAdvancedDrawer.classList.add("hidden");
   elements.providerAdvancedDrawer.classList.add("hidden");
   elements.proxyAdvancedDrawer.classList.add("hidden");
+  syncOutputAdvancedPanel();
   syncProviderAdvancedPanel();
   syncProxyAdvancedPanel();
   renderResults();
@@ -583,8 +673,39 @@ function syncProxyAdvancedPanel() {
   syncModalBodyLock();
 }
 
+function syncOutputAdvancedPanel() {
+  const isCustomFormat = elements.format.value === "custom";
+  elements.formatAdvancedTrigger.classList.remove("hidden");
+  elements.formatSuffix.disabled = !isCustomFormat;
+  const expanded = !elements.formatAdvancedDrawer.classList.contains("hidden");
+  elements.formatAdvancedTrigger.textContent = expanded ? "收起高级设置" : "高级设置";
+  if (isCustomFormat) {
+    elements.formatAdvancedNote.textContent = "仅在自定义输出格式下生效；可通过尾缀控制导出文件类型。";
+  } else {
+    const defaultSuffix = defaultSuffixForFormat(elements.format.value);
+    elements.formatAdvancedNote.textContent = `当前固定使用 .${defaultSuffix}，高级设置仅在自定义格式下可用。`;
+  }
+  syncModalBodyLock();
+}
+
+function applyFormatChange(newFormat) {
+  const previousFormat = state.lastFormat || newFormat;
+  const currentSuffix = normalizeSuffix(elements.formatSuffix.value);
+  if (newFormat === "custom" && (!currentSuffix || currentSuffix === defaultSuffixForFormat(previousFormat))) {
+    elements.formatSuffix.value = defaultSuffixForFormat(newFormat);
+  }
+  state.lastFormat = newFormat;
+  syncOutputAdvancedPanel();
+}
+
+function closeFormatAdvancedPanel() {
+  elements.formatAdvancedDrawer.classList.add("hidden");
+  syncOutputAdvancedPanel();
+}
+
 function syncModalBodyLock() {
-  const hasOpenModal = !elements.providerAdvancedDrawer.classList.contains("hidden")
+  const hasOpenModal = !elements.formatAdvancedDrawer.classList.contains("hidden")
+    || !elements.providerAdvancedDrawer.classList.contains("hidden")
     || !elements.proxyAdvancedDrawer.classList.contains("hidden");
   document.body.classList.toggle("modal-open", hasOpenModal);
 }
@@ -600,8 +721,10 @@ function closeProxyAdvancedPanel() {
 }
 
 function closeAllAdvancedPanels() {
+  elements.formatAdvancedDrawer.classList.add("hidden");
   elements.providerAdvancedDrawer.classList.add("hidden");
   elements.proxyAdvancedDrawer.classList.add("hidden");
+  syncOutputAdvancedPanel();
   syncProviderAdvancedPanel();
   syncProxyAdvancedPanel();
 }
@@ -613,6 +736,7 @@ function savePreferences() {
     concurrency: elements.concurrency.value,
     timeout: elements.timeout.value,
     format: elements.format.value,
+    formatSuffix: normalizeSuffix(elements.formatSuffix.value),
     pageSize: elements.pageSize.value,
     proxyMode: elements.proxyMode.value,
     proxyUrl: elements.proxyUrl.value,
@@ -637,6 +761,7 @@ function restorePreferences() {
     elements.concurrency.value = payload.concurrency || elements.concurrency.value;
     elements.timeout.value = payload.timeout || elements.timeout.value;
     elements.format.value = payload.format || elements.format.value;
+    elements.formatSuffix.value = payload.formatSuffix || "";
     elements.pageSize.value = payload.pageSize || elements.pageSize.value;
     elements.proxyMode.value = payload.proxyMode || elements.proxyMode.value;
     elements.proxyUrl.value = payload.proxyUrl || "";
@@ -656,12 +781,16 @@ function wireActions() {
   elements.start.addEventListener("click", startJob);
   elements.cancel.addEventListener("click", cancelJob);
   elements.exportReport.addEventListener("click", downloadReport);
-  elements.exportValid.addEventListener("click", () => downloadStatus("valid", "valid_keys.txt"));
-  elements.exportInvalid.addEventListener("click", () => downloadStatus("invalid", "invalid_keys.txt"));
-  elements.exportError.addEventListener("click", () => downloadStatus("error", "error_keys.txt"));
+  elements.exportValid.addEventListener("click", () => downloadStatus("valid", "valid_keys"));
+  elements.exportInvalid.addEventListener("click", () => downloadStatus("invalid", "invalid_keys"));
+  elements.exportError.addEventListener("click", () => downloadStatus("error", "error_keys"));
   elements.refreshHistory.addEventListener("click", refreshHistory);
   elements.clearHistory.addEventListener("click", clearHistory);
   elements.toggleHistory.addEventListener("click", toggleHistory);
+  elements.formatAdvancedTrigger.addEventListener("click", () => {
+    elements.formatAdvancedDrawer.classList.toggle("hidden");
+    syncOutputAdvancedPanel();
+  });
   elements.providerAdvancedTrigger.addEventListener("click", () => {
     elements.providerAdvancedDrawer.classList.toggle("hidden");
     syncProviderAdvancedPanel();
@@ -670,8 +799,14 @@ function wireActions() {
     elements.proxyAdvancedDrawer.classList.toggle("hidden");
     syncProxyAdvancedPanel();
   });
+  elements.formatAdvancedClose?.addEventListener("click", closeFormatAdvancedPanel);
   elements.providerAdvancedClose?.addEventListener("click", closeProviderAdvancedPanel);
   elements.proxyAdvancedClose?.addEventListener("click", closeProxyAdvancedPanel);
+  elements.formatAdvancedDrawer.addEventListener("click", (event) => {
+    if (event.target === elements.formatAdvancedDrawer) {
+      closeFormatAdvancedPanel();
+    }
+  });
   elements.providerAdvancedDrawer.addEventListener("click", (event) => {
     if (event.target === elements.providerAdvancedDrawer) {
       closeProviderAdvancedPanel();
@@ -724,9 +859,18 @@ function wireActions() {
       if (element === elements.proxyMode) {
         syncProxyPanel();
       }
+      if (element === elements.format) {
+        applyFormatChange(elements.format.value);
+      }
       savePreferences();
     });
     element.addEventListener("input", savePreferences);
+  });
+
+  elements.formatSuffix.addEventListener("input", () => {
+    elements.formatSuffix.value = normalizeSuffix(elements.formatSuffix.value);
+    savePreferences();
+    syncOutputAdvancedPanel();
   });
 }
 
@@ -753,14 +897,21 @@ async function init() {
   await loadMeta();
   await loadProviders();
   restorePreferences();
+  if (!elements.formatSuffix.value) {
+    elements.formatSuffix.value = defaultSuffixForFormat(elements.format.value);
+  }
+  state.lastFormat = elements.format.value;
   if (!elements.provider.value) {
     elements.provider.value = "custom";
   }
   syncCustomPanel();
   syncEndpointField();
   syncProxyPanel();
+  applyFormatChange(elements.format.value);
+  elements.formatAdvancedDrawer.classList.add("hidden");
   elements.providerAdvancedDrawer.classList.add("hidden");
   elements.proxyAdvancedDrawer.classList.add("hidden");
+  syncOutputAdvancedPanel();
   syncProviderAdvancedPanel();
   syncProxyAdvancedPanel();
   document.querySelector(".history-panel")?.classList.add("collapsed");

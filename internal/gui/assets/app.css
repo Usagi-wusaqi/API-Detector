@@ -123,18 +123,29 @@ body {
 }
 
 .panel {
-  padding: 18px;
+  padding: 16px;
 }
 
 .config-panel {
-.advanced-grid .span-2 {
-  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 
-.hidden {
-  display: none !important;
+.results-panel {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 20px;
+  height: calc(100vh - 40px);
+  min-height: 900px;
 }
-  margin-bottom: 4px;
+
+.app-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .app-intro-head {
@@ -160,13 +171,13 @@ body {
 
 .button-row {
   flex-wrap: nowrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .button-row button {
   flex: 1 1 0;
   min-width: 0;
-  padding: 10px 10px;
+  padding: 9px 8px;
   font-size: 13px;
   white-space: nowrap;
 }
@@ -174,7 +185,7 @@ body {
 label {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   font-size: 14px;
   color: var(--muted);
 }
@@ -183,6 +194,7 @@ label {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 28px;
 }
 
 .field-title.with-action {
@@ -231,7 +243,7 @@ textarea {
 .grid-two {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .spinbox {
@@ -443,7 +455,7 @@ body.modal-open {
 }
 
 .keys-block {
-  margin-top: 18px;
+  margin-top: 10px;
 }
 
 button {
