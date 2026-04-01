@@ -16,7 +16,9 @@ import (
 
 	"github.com/Usagi-wusaqi/API-Detector/internal/appmeta"
 	"github.com/Usagi-wusaqi/API-Detector/internal/clierror"
+	"github.com/Usagi-wusaqi/API-Detector/internal/configutil"
 	"github.com/Usagi-wusaqi/API-Detector/internal/core"
+	"github.com/Usagi-wusaqi/API-Detector/internal/gui"
 	"github.com/Usagi-wusaqi/API-Detector/internal/output"
 	"github.com/Usagi-wusaqi/API-Detector/internal/providers"
 )
@@ -49,6 +51,8 @@ func run(args []string) error {
 	switch args[0] {
 	case "check":
 		return runCheck(args[1:])
+	case "gui":
+		return runGUI(args[1:])
 	case "providers":
 		return runProviders(args[1:])
 	case "version", "-v", "--version":
@@ -316,10 +320,13 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  apidetect check [flags]")
+	fmt.Fprintln(w, "  apidetect gui [flags]")
 	fmt.Fprintln(w, "  apidetect providers [flags]")
 	fmt.Fprintln(w, "  apidetect version")
 	fmt.Fprintln(w)
 	printCheckUsage(w)
+	fmt.Fprintln(w)
+	printGUIUsage(w)
 	fmt.Fprintln(w)
 	printProvidersUsage(w)
 }
@@ -351,6 +358,42 @@ func printProvidersUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --format         text or json (default: text)")
 }
 
+func runGUI(args []string) error {
+	fs := flag.NewFlagSet("gui", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	var (
+		listenAddr string
+		noOpen     bool
+	)
+
+	fs.StringVar(&listenAddr, "listen", "127.0.0.1:8787", "listen address for the local GUI server")
+	fs.BoolVar(&noOpen, "no-open", false, "do not open the browser automatically")
+
+	if err := fs.Parse(args); err != nil {
+		printGUIUsage(os.Stderr)
+		return clierror.ExitError{Code: 2, Err: err}
+	}
+	if fs.NArg() > 0 {
+		return clierror.ExitError{
+			Code: 2,
+			Err:  fmt.Errorf("gui does not accept positional arguments"),
+		}
+	}
+
+	server := gui.NewServer(listenAddr)
+	if err := server.Run(noOpen); err != nil {
+		return err
+	}
+	return nil
+}
+
+func printGUIUsage(w io.Writer) {
+	fmt.Fprintln(w, "gui flags:")
+	fmt.Fprintln(w, "  --listen         Listen address for the local GUI server (default: 127.0.0.1:8787)")
+	fmt.Fprintln(w, "  --no-open        Do not open the browser automatically")
+}
+
 type headerFlags []string
 
 func (h *headerFlags) String() string {
@@ -378,18 +421,9 @@ func (h *headerFlags) Set(value string) error {
 }
 
 func (h headerFlags) AsMap() map[string]string {
-	out := make(map[string]string, len(h))
-	for _, item := range h {
-		parts := strings.SplitN(item, ":", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		name := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-		if name == "" {
-			continue
-		}
-		out[name] = value
+	out, err := configutil.ParseHeaderEntries(h)
+	if err != nil {
+		return map[string]string{}
 	}
 	return out
 }

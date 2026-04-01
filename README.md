@@ -57,6 +57,18 @@ Linux / macOS 可以运行：
 
 ## 基本用法
 
+启动本地 GUI：
+
+```bash
+go run ./cmd/apidetect gui
+```
+
+如果不想自动打开浏览器：
+
+```bash
+go run ./cmd/apidetect gui --no-open
+```
+
 查看内置 Provider：
 
 ```bash
