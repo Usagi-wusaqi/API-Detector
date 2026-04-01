@@ -8,22 +8,23 @@
   </head>
   <body>
     <div class="page-shell">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">Local Desktop GUI</p>
-          <h1>API Detector</h1>
-          <p class="subhead">本地桌面界面，直接复用当前 Go 检测内核。</p>
-        </div>
-        <div class="hero-meta">
-          <div id="version-badge" class="badge">v3.0.0</div>
-          <div id="status-pill" class="status-pill idle">就绪</div>
-        </div>
-      </header>
-
-      <div id="banner" class="banner hidden"></div>
-
       <main class="layout">
         <section class="panel config-panel">
+          <div class="app-intro">
+            <div class="app-intro-head">
+              <div>
+                <p class="eyebrow">Local Desktop GUI</p>
+                <h1>API Detector</h1>
+                <p class="subhead">本地桌面界面，直接复用当前 Go 检测内核。</p>
+              </div>
+              <div class="hero-meta">
+                <div id="version-badge" class="badge">v3.0.0</div>
+                <div id="status-pill" class="status-pill idle">就绪</div>
+              </div>
+            </div>
+            <div id="banner" class="banner hidden"></div>
+          </div>
+
           <div class="panel-header">
             <h2>检测配置</h2>
             <div class="actions">
@@ -112,6 +113,18 @@
             <button id="export-invalid" class="ghost" disabled>导出无效</button>
             <button id="export-error" class="ghost" disabled>导出错误</button>
           </div>
+
+          <div class="history-panel side-history">
+            <div class="history-header">
+              <h3>最近任务 <span id="history-count" class="history-count">0</span></h3>
+              <div class="actions">
+                <button id="refresh-history" class="ghost small">刷新</button>
+                <button id="clear-history" class="ghost small">清空历史</button>
+                <button id="toggle-history" class="ghost small">展开</button>
+              </div>
+            </div>
+            <div id="job-history" class="job-history empty">暂无任务</div>
+          </div>
         </section>
 
         <section class="panel results-panel">
@@ -120,17 +133,6 @@
             <div class="summary-inline">
               <span id="summary-rate">0.00 keys/s</span>
             </div>
-          </div>
-
-          <div class="history-panel">
-            <div class="history-header">
-              <h3>最近任务</h3>
-              <div class="actions">
-                <button id="refresh-history" class="ghost small">刷新</button>
-                <button id="clear-history" class="ghost small">清空历史</button>
-              </div>
-            </div>
-            <div id="job-history" class="job-history empty">暂无任务</div>
           </div>
 
           <div class="stats-grid">
@@ -171,7 +173,7 @@
           </div>
 
           <div class="pagination">
-            <label>
+            <label class="page-size-field">
               <span>每页</span>
               <select id="page-size">
                 <option value="20">20</option>

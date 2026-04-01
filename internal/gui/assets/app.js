@@ -52,8 +52,10 @@ const elements = {
   pageNext: document.getElementById("page-next"),
   pageInfo: document.getElementById("page-info"),
   jobHistory: document.getElementById("job-history"),
+  historyCount: document.getElementById("history-count"),
   refreshHistory: document.getElementById("refresh-history"),
   clearHistory: document.getElementById("clear-history"),
+  toggleHistory: document.getElementById("toggle-history"),
   customPanel: document.getElementById("custom-panel"),
   banner: document.getElementById("banner"),
 };
@@ -161,6 +163,7 @@ function renderResults() {
 }
 
 function renderHistory() {
+  elements.historyCount.textContent = state.jobs.length;
   elements.jobHistory.innerHTML = "";
   if (!state.jobs.length) {
     elements.jobHistory.textContent = "暂无任务";
@@ -187,6 +190,13 @@ function renderHistory() {
     button.addEventListener("click", () => loadJobSnapshot(job.id));
     elements.jobHistory.appendChild(button);
   }
+}
+
+function toggleHistory() {
+  const panel = document.querySelector(".history-panel");
+  panel.classList.toggle("collapsed");
+  const collapsed = panel.classList.contains("collapsed");
+  elements.toggleHistory.textContent = collapsed ? "展开" : "收起";
 }
 
 function downloadStatus(status, filename) {
@@ -463,6 +473,7 @@ function wireActions() {
   elements.exportError.addEventListener("click", () => downloadStatus("error", "error_keys.txt"));
   elements.refreshHistory.addEventListener("click", refreshHistory);
   elements.clearHistory.addEventListener("click", clearHistory);
+  elements.toggleHistory.addEventListener("click", toggleHistory);
   elements.resetSettings.addEventListener("click", resetSettings);
   elements.statusFilter.addEventListener("change", () => { state.currentPage = 1; savePreferences(); renderResults(); });
   elements.sortOrder.addEventListener("change", () => { state.currentPage = 1; savePreferences(); renderResults(); });
@@ -527,6 +538,8 @@ async function init() {
   restorePreferences();
   syncCustomPanel();
   syncProxyPanel();
+  document.querySelector(".history-panel")?.classList.add("collapsed");
+  elements.toggleHistory.textContent = "展开";
   wireFileImport();
   wireActions();
   updateSummary(state.summary);
