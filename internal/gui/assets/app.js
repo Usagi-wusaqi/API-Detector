@@ -92,15 +92,12 @@ function renderResults() {
 }
 
 function downloadStatus(status, filename) {
-  const lines = state.results.filter((item) => item.status === status).map((item) => item.key);
-  if (!lines.length) return;
-  const blob = new Blob([lines.join("\n") + "\n"], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+  if (!state.jobId) return;
+  const url = `/api/jobs/${state.jobId}/results?status=${encodeURIComponent(status)}`;
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
   anchor.click();
-  URL.revokeObjectURL(url);
 }
 
 function appendResult(result) {
@@ -190,6 +187,35 @@ async function cancelJob() {
   await fetch(`/api/jobs/${state.jobId}/cancel`, { method: "POST" });
 }
 
+async function restoreLatestJob() {
+  const response = await fetch("/api/jobs");
+  if (!response.ok) return;
+
+  const jobs = await response.json();
+  if (!Array.isArray(jobs) || !jobs.length) return;
+
+  jobs.sort((left, right) => new Date(right.started_at).getTime() - new Date(left.started_at).getTime());
+  const latest = jobs[0];
+
+  const snapshotResponse = await fetch(`/api/jobs/${latest.id}`);
+  if (!snapshotResponse.ok) return;
+
+  const snapshot = await snapshotResponse.json();
+  state.jobId = snapshot.id;
+  state.results = snapshot.results || [];
+  updateSummary(snapshot.summary || state.summary);
+  renderResults();
+
+  if (snapshot.status === "running") {
+    setRunning(true);
+    connectEvents(snapshot.id);
+  } else {
+    elements.statusPill.textContent = snapshot.status === "done" ? "已完成" : snapshot.status;
+    elements.statusPill.className = "status-pill done";
+    setRunning(false);
+  }
+}
+
 function wireFileImport() {
   elements.importFile.addEventListener("click", () => elements.fileInput.click());
   elements.fileInput.addEventListener("change", async (event) => {
@@ -213,6 +239,7 @@ async function init() {
   wireActions();
   updateSummary(state.summary);
   renderResults();
+  await restoreLatestJob();
 }
 
 init().catch((error) => {

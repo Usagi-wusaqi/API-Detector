@@ -69,6 +69,12 @@ go run ./cmd/apidetect gui
 go run ./cmd/apidetect gui --no-open
 ```
 
+作为本地网页版服务运行：
+
+```bash
+go run ./cmd/apidetect web --listen 127.0.0.1:8787
+```
+
 查看内置 Provider：
 
 ```bash
@@ -198,6 +204,7 @@ git push origin v3.0.0
 ```text
 cmd/apidetect          CLI 入口
 internal/core          检测执行流、解析、类型定义
+internal/gui           本地 GUI / Web 服务
 internal/providers     Provider 适配器
 internal/output        输出和导出逻辑
 .github/workflows      CI 与发布流程

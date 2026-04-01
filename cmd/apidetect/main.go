@@ -53,6 +53,8 @@ func run(args []string) error {
 		return runCheck(args[1:])
 	case "gui":
 		return runGUI(args[1:])
+	case "web":
+		return runWeb(args[1:])
 	case "providers":
 		return runProviders(args[1:])
 	case "version", "-v", "--version":
@@ -321,12 +323,15 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  apidetect check [flags]")
 	fmt.Fprintln(w, "  apidetect gui [flags]")
+	fmt.Fprintln(w, "  apidetect web [flags]")
 	fmt.Fprintln(w, "  apidetect providers [flags]")
 	fmt.Fprintln(w, "  apidetect version")
 	fmt.Fprintln(w)
 	printCheckUsage(w)
 	fmt.Fprintln(w)
 	printGUIUsage(w)
+	fmt.Fprintln(w)
+	printWebUsage(w)
 	fmt.Fprintln(w)
 	printProvidersUsage(w)
 }
@@ -359,6 +364,14 @@ func printProvidersUsage(w io.Writer) {
 }
 
 func runGUI(args []string) error {
+	return runServerMode(args, true)
+}
+
+func runWeb(args []string) error {
+	return runServerMode(args, false)
+}
+
+func runServerMode(args []string, autoOpen bool) error {
 	fs := flag.NewFlagSet("gui", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
@@ -371,18 +384,22 @@ func runGUI(args []string) error {
 	fs.BoolVar(&noOpen, "no-open", false, "do not open the browser automatically")
 
 	if err := fs.Parse(args); err != nil {
-		printGUIUsage(os.Stderr)
+		if autoOpen {
+			printGUIUsage(os.Stderr)
+		} else {
+			printWebUsage(os.Stderr)
+		}
 		return clierror.ExitError{Code: 2, Err: err}
 	}
 	if fs.NArg() > 0 {
 		return clierror.ExitError{
 			Code: 2,
-			Err:  fmt.Errorf("gui does not accept positional arguments"),
+			Err:  fmt.Errorf("server mode does not accept positional arguments"),
 		}
 	}
 
 	server := gui.NewServer(listenAddr)
-	if err := server.Run(noOpen); err != nil {
+	if err := server.Run(noOpen || !autoOpen); err != nil {
 		return err
 	}
 	return nil
@@ -392,6 +409,12 @@ func printGUIUsage(w io.Writer) {
 	fmt.Fprintln(w, "gui flags:")
 	fmt.Fprintln(w, "  --listen         Listen address for the local GUI server (default: 127.0.0.1:8787)")
 	fmt.Fprintln(w, "  --no-open        Do not open the browser automatically")
+}
+
+func printWebUsage(w io.Writer) {
+	fmt.Fprintln(w, "web flags:")
+	fmt.Fprintln(w, "  --listen         Listen address for the local web server (default: 127.0.0.1:8787)")
+	fmt.Fprintln(w, "  --no-open        Accepted but ignored; web mode never auto-opens")
 }
 
 type headerFlags []string

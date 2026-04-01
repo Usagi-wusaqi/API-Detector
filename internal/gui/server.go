@@ -38,6 +38,7 @@ func NewServer(addr string) *Server {
 
 func (s *Server) Run(noOpen bool) error {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/health", s.handleHealth)
 	mux.HandleFunc("/api/providers", s.handleProviders)
 	mux.HandleFunc("/api/jobs", s.handleJobs)
 	mux.HandleFunc("/api/jobs/", s.handleJobRoutes)
@@ -63,6 +64,10 @@ func (s *Server) Run(noOpen bool) error {
 	return server.ListenAndServe()
 }
 
+func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -82,6 +87,10 @@ func (s *Server) handleProviders(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		writeJSON(w, http.StatusOK, s.manager.list())
+		return
+	}
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -136,6 +145,23 @@ func (s *Server) handleJobRoutes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(parts) == 2 && parts[1] == "results" && r.Method == http.MethodGet {
+		status := r.URL.Query().Get("status")
+		content, err := s.manager.export(id, status)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		filename := "results.txt"
+		if status != "" {
+			filename = status + "_keys.txt"
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+		_, _ = w.Write(content)
+		return
+	}
+
 	http.NotFound(w, r)
 }
 
@@ -152,10 +178,11 @@ type startJobPayload struct {
 }
 
 type jobSnapshot struct {
-	ID      string            `json:"id"`
-	Status  string            `json:"status"`
-	Summary core.CheckSummary `json:"summary"`
-	Results []guiCheckResult  `json:"results"`
+	ID        string            `json:"id"`
+	Status    string            `json:"status"`
+	StartedAt string            `json:"started_at"`
+	Summary   core.CheckSummary `json:"summary"`
+	Results   []guiCheckResult  `json:"results"`
 }
 
 type jobEvent struct {
@@ -283,11 +310,29 @@ func (m *jobManager) snapshot(id string) (jobSnapshot, error) {
 	}
 
 	return jobSnapshot{
-		ID:      job.id,
-		Status:  job.status,
-		Summary: job.summary,
-		Results: toGUIResults(job.results),
+		ID:        job.id,
+		Status:    job.status,
+		StartedAt: job.startedAt.Format(time.RFC3339),
+		Summary:   job.summary,
+		Results:   toGUIResults(job.results),
 	}, nil
+}
+
+func (m *jobManager) list() []jobSnapshot {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	out := make([]jobSnapshot, 0, len(m.jobs))
+	for _, job := range m.jobs {
+		out = append(out, jobSnapshot{
+			ID:        job.id,
+			Status:    job.status,
+			StartedAt: job.startedAt.Format(time.RFC3339),
+			Summary:   job.summary,
+			Results:   nil,
+		})
+	}
+	return out
 }
 
 func (m *jobManager) cancel(id string) error {
@@ -301,6 +346,37 @@ func (m *jobManager) cancel(id string) error {
 	job.status = "canceled"
 	job.cancel()
 	return nil
+}
+
+func (m *jobManager) export(id string, status string) ([]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	job, ok := m.jobs[id]
+	if !ok {
+		return nil, errors.New("job not found")
+	}
+
+	var filter core.Status
+	if status != "" {
+		filter = core.Status(status)
+		switch filter {
+		case core.StatusValid, core.StatusInvalid, core.StatusError, core.StatusCanceled:
+		default:
+			return nil, errors.New("unsupported status filter")
+		}
+	}
+
+	var builder strings.Builder
+	for _, result := range job.results {
+		if status != "" && result.Status != filter {
+			continue
+		}
+		builder.WriteString(result.Key)
+		builder.WriteByte('\n')
+	}
+
+	return []byte(builder.String()), nil
 }
 
 func (m *jobManager) stream(w http.ResponseWriter, r *http.Request, id string) error {

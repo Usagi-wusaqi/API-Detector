@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Usagi-wusaqi/API-Detector/internal/core"
 )
 
 func TestHandleProviders(t *testing.T) {
@@ -20,6 +22,21 @@ func TestHandleProviders(t *testing.T) {
 	}
 	if !strings.Contains(recorder.Body.String(), "\"openai\"") {
 		t.Fatalf("expected providers response to include openai: %s", recorder.Body.String())
+	}
+}
+
+func TestHandleHealth(t *testing.T) {
+	server := NewServer("127.0.0.1:0")
+	request := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	recorder := httptest.NewRecorder()
+
+	server.handleHealth(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", recorder.Code, http.StatusOK)
+	}
+	if !strings.Contains(recorder.Body.String(), `"status":"ok"`) {
+		t.Fatalf("unexpected health body: %s", recorder.Body.String())
 	}
 }
 
@@ -61,5 +78,26 @@ func TestJobManagerStartAndSnapshot(t *testing.T) {
 			t.Fatalf("job did not complete in time")
 		}
 		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func TestJobManagerExportByStatus(t *testing.T) {
+	manager := newJobManager()
+	manager.jobs["job-1"] = &job{
+		id:     "job-1",
+		status: "done",
+		results: []core.CheckResult{
+			{Key: "sk-valid", Status: core.StatusValid},
+			{Key: "sk-invalid", Status: core.StatusInvalid},
+			{Key: "sk-error", Status: core.StatusError},
+		},
+	}
+
+	content, err := manager.export("job-1", string(core.StatusInvalid))
+	if err != nil {
+		t.Fatalf("export returned error: %v", err)
+	}
+	if strings.TrimSpace(string(content)) != "sk-invalid" {
+		t.Fatalf("unexpected export content: %q", string(content))
 	}
 }
