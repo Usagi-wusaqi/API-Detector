@@ -49,6 +49,30 @@ body {
   margin-bottom: 24px;
 }
 
+.banner {
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(75, 57, 43, 0.08);
+  box-shadow: var(--shadow);
+  background: rgba(255, 255, 255, 0.78);
+  font-weight: 600;
+}
+
+.banner.info {
+  color: var(--muted);
+}
+
+.banner.success {
+  color: var(--ok);
+  border-color: rgba(43, 122, 75, 0.18);
+}
+
+.banner.error {
+  color: var(--bad);
+  border-color: rgba(176, 67, 44, 0.2);
+}
+
 .eyebrow {
   margin: 0 0 8px;
   font-size: 12px;
@@ -307,6 +331,20 @@ button:disabled {
   grid-template-columns: 180px 180px minmax(220px, 1fr);
   gap: 14px;
   margin-bottom: 16px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .search-field {

@@ -34,17 +34,25 @@ builds:
     ldflags:
       - -s -w -X github.com/Usagi-wusaqi/API-Detector/internal/appmeta.Version={{ .Version }} -X github.com/Usagi-wusaqi/API-Detector/internal/appmeta.Commit={{ .Commit }} -X github.com/Usagi-wusaqi/API-Detector/internal/appmeta.BuildDate={{ .Date }}
     goos:
-      - windows
       - linux
       - darwin
     goarch:
       - amd64
       - arm64
     ignore:
-      - goos: windows
-        goarch: arm64
       - goos: linux
         goarch: arm64
+  - id: apidetect-gui-windows
+    main: ./cmd/apidetect-gui
+    binary: apidetect-gui
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -H=windowsgui -X github.com/Usagi-wusaqi/API-Detector/internal/appmeta.Version={{ .Version }} -X github.com/Usagi-wusaqi/API-Detector/internal/appmeta.Commit={{ .Commit }} -X github.com/Usagi-wusaqi/API-Detector/internal/appmeta.BuildDate={{ .Date }}
+    goos:
+      - windows
+    goarch:
+      - amd64
 
 archives:
   - id: cli-archives
@@ -63,6 +71,7 @@ archives:
   - id: gui-archives
     builds:
       - apidetect-gui
+      - apidetect-gui-windows
     name_template: "{{ .ProjectName }}-gui_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE

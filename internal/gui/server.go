@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -34,7 +35,7 @@ type Server struct {
 func NewServer(addr string) *Server {
 	return &Server{
 		addr:    addr,
-		manager: newJobManager(),
+		manager: newJobManager(loadPersistentJobs()),
 	}
 }
 
@@ -62,8 +63,10 @@ func (s *Server) Run(noOpen bool) error {
 	}
 
 	fmt.Println("GUI listening on", url)
+	_ = writeInstanceFile(url, os.Getpid())
+	defer clearInstanceFile(url, os.Getpid())
 	if !noOpen {
-		go openBrowser(url)
+		go OpenBrowser(url)
 	}
 
 	return server.Serve(listener)
@@ -238,8 +241,11 @@ type jobManager struct {
 	jobs map[string]*job
 }
 
-func newJobManager() *jobManager {
-	return &jobManager{jobs: make(map[string]*job)}
+func newJobManager(jobs map[string]*job) *jobManager {
+	if jobs == nil {
+		jobs = map[string]*job{}
+	}
+	return &jobManager{jobs: jobs}
 }
 
 func (m *jobManager) start(payload startJobPayload) (string, error) {
@@ -288,6 +294,7 @@ func (m *jobManager) start(payload startJobPayload) (string, error) {
 
 	m.mu.Lock()
 	m.jobs[id] = job
+	_ = savePersistentJobs(m.jobs)
 	m.mu.Unlock()
 
 	go func() {
@@ -328,6 +335,7 @@ func (m *jobManager) start(payload startJobPayload) (string, error) {
 			job.summary = accumulateSummary(job.summary, event.Result, len(keys), job.startedAt)
 			summaryCopy := job.summary
 			m.broadcast(job, jobEvent{Type: "result", Result: toGUIResult(event.Result), Summary: summaryCopy})
+			_ = savePersistentJobs(m.jobs)
 			m.mu.Unlock()
 		})
 
@@ -338,6 +346,7 @@ func (m *jobManager) start(payload startJobPayload) (string, error) {
 			job.status = "done"
 		}
 		m.broadcast(job, jobEvent{Type: "complete", Summary: summary})
+		_ = savePersistentJobs(m.jobs)
 		m.mu.Unlock()
 	}()
 
@@ -389,6 +398,7 @@ func (m *jobManager) cancel(id string) error {
 	}
 	job.status = "canceled"
 	job.cancel()
+	_ = savePersistentJobs(m.jobs)
 	return nil
 }
 
@@ -542,7 +552,7 @@ func newJobID() string {
 	return hex.EncodeToString(bytes[:])
 }
 
-func openBrowser(url string) {
+func OpenBrowser(url string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":

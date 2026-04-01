@@ -39,7 +39,7 @@ $cliPath = Join-Path $outputDirPath "apidetect.exe"
 $guiPath = Join-Path $outputDirPath "apidetect-gui.exe"
 
 & $goExe build -trimpath -o $cliPath .\cmd\apidetect
-& $goExe build -trimpath -o $guiPath .\cmd\apidetect-gui
+& $goExe build -trimpath -ldflags "-H=windowsgui" -o $guiPath .\cmd\apidetect-gui
 
 Write-Host ""
 Write-Host "Build completed:"

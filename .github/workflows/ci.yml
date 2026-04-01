@@ -36,7 +36,12 @@ jobs:
         run: go build ./cmd/apidetect
 
       - name: Build GUI launcher
+        if: runner.os != 'Windows'
         run: go build ./cmd/apidetect-gui
+
+      - name: Build GUI launcher (Windows GUI subsystem)
+        if: runner.os == 'Windows'
+        run: go build -ldflags "-H=windowsgui" ./cmd/apidetect-gui
 
       - name: Smoke test providers command
         run: go run ./cmd/apidetect providers

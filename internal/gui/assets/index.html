@@ -20,6 +20,8 @@
         </div>
       </header>
 
+      <div id="banner" class="banner hidden"></div>
+
       <main class="layout">
         <section class="panel config-panel">
           <div class="panel-header">
@@ -162,6 +164,23 @@
               <span>搜索</span>
               <input id="search-query" type="text" placeholder="搜索 masked key / 状态 / 原因 / 消息" />
             </label>
+          </div>
+
+          <div class="pagination">
+            <label>
+              <span>每页</span>
+              <select id="page-size">
+                <option value="20">20</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </label>
+            <div class="pagination-actions">
+              <button id="page-prev" class="ghost small">上一页</button>
+              <span id="page-info">第 1 / 1 页</span>
+              <button id="page-next" class="ghost small">下一页</button>
+            </div>
           </div>
 
           <div class="results-table-wrap">

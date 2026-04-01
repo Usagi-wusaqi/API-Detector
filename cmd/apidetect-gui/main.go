@@ -23,6 +23,14 @@ func main() {
 		return
 	}
 
+	if existingURL, ok := gui.TryReuseExistingInstance(); ok {
+		fmt.Fprintln(os.Stdout, gui.DescribeInstance(existingURL))
+		if !*noOpen {
+			gui.OpenBrowser(existingURL)
+		}
+		return
+	}
+
 	server := gui.NewServer(*listenAddr)
 	if err := server.Run(*noOpen); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)

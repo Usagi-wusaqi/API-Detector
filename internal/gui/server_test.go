@@ -47,7 +47,7 @@ func TestJobManagerStartAndSnapshot(t *testing.T) {
 	}))
 	defer target.Close()
 
-	manager := newJobManager()
+	manager := newJobManager(nil)
 	jobID, err := manager.start(startJobPayload{
 		Provider:     "custom",
 		Keys:         "sk-test\n",
@@ -84,7 +84,7 @@ func TestJobManagerStartAndSnapshot(t *testing.T) {
 }
 
 func TestJobManagerExportByStatus(t *testing.T) {
-	manager := newJobManager()
+	manager := newJobManager(nil)
 	manager.jobs["job-1"] = &job{
 		id:     "job-1",
 		status: "done",
@@ -126,7 +126,7 @@ func TestListenWithFallbackWhenPortOccupied(t *testing.T) {
 }
 
 func TestJobManagerStartWithInvalidProxyAddsErrorResults(t *testing.T) {
-	manager := newJobManager()
+	manager := newJobManager(nil)
 	jobID, err := manager.start(startJobPayload{
 		Provider:  "openai",
 		Keys:      "sk-test\n",

@@ -5,6 +5,7 @@ const state = {
   jobs: [],
   results: [],
   filteredResults: [],
+  currentPage: 1,
   summary: { total: 0, checked: 0, valid: 0, invalid: 0, error: 0, canceled: 0, keys_per_second: 0 },
 };
 
@@ -44,9 +45,14 @@ const elements = {
   statusFilter: document.getElementById("status-filter"),
   sortOrder: document.getElementById("sort-order"),
   searchQuery: document.getElementById("search-query"),
+  pageSize: document.getElementById("page-size"),
+  pagePrev: document.getElementById("page-prev"),
+  pageNext: document.getElementById("page-next"),
+  pageInfo: document.getElementById("page-info"),
   jobHistory: document.getElementById("job-history"),
   refreshHistory: document.getElementById("refresh-history"),
   customPanel: document.getElementById("custom-panel"),
+  banner: document.getElementById("banner"),
 };
 
 async function loadProviders() {
@@ -114,7 +120,13 @@ function renderResults() {
     return (left.index || 0) - (right.index || 0);
   });
 
-  for (const result of state.filteredResults) {
+  const pageSize = Number(elements.pageSize.value);
+  const totalPages = Math.max(1, Math.ceil(state.filteredResults.length / pageSize));
+  state.currentPage = Math.max(1, Math.min(state.currentPage, totalPages));
+  const start = (state.currentPage - 1) * pageSize;
+  const end = start + pageSize;
+
+  for (const result of state.filteredResults.slice(start, end)) {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td class="status-${result.status}">${result.status}</td>
@@ -130,6 +142,9 @@ function renderResults() {
   elements.exportValid.disabled = state.results.every((item) => item.status !== "valid");
   elements.exportInvalid.disabled = state.results.every((item) => item.status !== "invalid");
   elements.exportError.disabled = state.results.every((item) => item.status !== "error");
+  elements.pagePrev.disabled = state.currentPage <= 1;
+  elements.pageNext.disabled = state.currentPage >= totalPages;
+  elements.pageInfo.textContent = `第 ${state.currentPage} / ${totalPages} 页`;
 }
 
 function renderHistory() {
@@ -185,6 +200,16 @@ function appendResult(result) {
   renderResults();
 }
 
+function showBanner(message, type = "info") {
+  if (!message) {
+    elements.banner.textContent = "";
+    elements.banner.className = "banner hidden";
+    return;
+  }
+  elements.banner.textContent = message;
+  elements.banner.className = `banner ${type}`;
+}
+
 function closeEvents() {
   if (state.eventSource) {
     state.eventSource.close();
@@ -226,10 +251,18 @@ function connectEvents(jobId) {
 }
 
 async function startJob() {
+  const validationError = validateForm();
+  if (validationError) {
+    showBanner(validationError, "error");
+    return;
+  }
+
   state.results = [];
+  state.currentPage = 1;
   renderResults();
   updateSummary({ total: 0, checked: 0, valid: 0, invalid: 0, error: 0, canceled: 0, keys_per_second: 0 });
   setRunning(true);
+  showBanner("检测任务已创建，正在执行。", "info");
 
   const payload = {
     provider: elements.provider.value,
@@ -254,7 +287,7 @@ async function startJob() {
   if (!response.ok) {
     const text = await response.text();
     setRunning(false);
-    alert(text || "创建任务失败");
+    showBanner(text || "创建任务失败", "error");
     return;
   }
 
@@ -267,6 +300,7 @@ async function startJob() {
 async function cancelJob() {
   if (!state.jobId) return;
   await fetch(`/api/jobs/${state.jobId}/cancel`, { method: "POST" });
+  showBanner("已请求取消当前任务。", "info");
 }
 
 async function refreshHistory() {
@@ -296,6 +330,7 @@ async function loadJobSnapshot(jobId) {
     setRunning(false);
     elements.statusPill.textContent = snapshot.status === "done" ? "已完成" : snapshot.status;
     elements.statusPill.className = "status-pill done";
+    showBanner("已加载历史任务。", "success");
   }
 }
 
@@ -328,6 +363,7 @@ function savePreferences() {
     concurrency: elements.concurrency.value,
     timeout: elements.timeout.value,
     format: elements.format.value,
+    pageSize: elements.pageSize.value,
     proxyMode: elements.proxyMode.value,
     proxyUrl: elements.proxyUrl.value,
     customUrl: elements.customUrl.value,
@@ -351,6 +387,7 @@ function restorePreferences() {
     elements.concurrency.value = payload.concurrency || elements.concurrency.value;
     elements.timeout.value = payload.timeout || elements.timeout.value;
     elements.format.value = payload.format || elements.format.value;
+    elements.pageSize.value = payload.pageSize || elements.pageSize.value;
     elements.proxyMode.value = payload.proxyMode || elements.proxyMode.value;
     elements.proxyUrl.value = payload.proxyUrl || "";
     elements.customUrl.value = payload.customUrl || "";
@@ -374,9 +411,20 @@ function wireActions() {
   elements.exportInvalid.addEventListener("click", () => downloadStatus("invalid", "invalid_keys.txt"));
   elements.exportError.addEventListener("click", () => downloadStatus("error", "error_keys.txt"));
   elements.refreshHistory.addEventListener("click", refreshHistory);
-  elements.statusFilter.addEventListener("change", () => { savePreferences(); renderResults(); });
-  elements.sortOrder.addEventListener("change", () => { savePreferences(); renderResults(); });
-  elements.searchQuery.addEventListener("input", () => { savePreferences(); renderResults(); });
+  elements.statusFilter.addEventListener("change", () => { state.currentPage = 1; savePreferences(); renderResults(); });
+  elements.sortOrder.addEventListener("change", () => { state.currentPage = 1; savePreferences(); renderResults(); });
+  elements.searchQuery.addEventListener("input", () => { state.currentPage = 1; savePreferences(); renderResults(); });
+  elements.pageSize.addEventListener("change", () => { state.currentPage = 1; savePreferences(); renderResults(); });
+  elements.pagePrev.addEventListener("click", () => {
+    if (state.currentPage > 1) {
+      state.currentPage -= 1;
+      renderResults();
+    }
+  });
+  elements.pageNext.addEventListener("click", () => {
+    state.currentPage += 1;
+    renderResults();
+  });
 
   [
     elements.provider,
@@ -404,6 +452,22 @@ function wireActions() {
   });
 }
 
+function validateForm() {
+  if (!elements.keys.value.trim()) {
+    return "请至少输入一个 key。";
+  }
+  if (!elements.timeout.value.trim()) {
+    return "请填写超时。";
+  }
+  if (elements.provider.value === "custom" && !elements.customUrl.value.trim()) {
+    return "自定义 Provider 必须填写 URL。";
+  }
+  if (elements.proxyMode.value === "custom" && !elements.proxyUrl.value.trim()) {
+    return "自定义代理模式必须填写代理地址。";
+  }
+  return "";
+}
+
 async function init() {
   await loadProviders();
   restorePreferences();
@@ -413,10 +477,11 @@ async function init() {
   wireActions();
   updateSummary(state.summary);
   renderResults();
+  showBanner("", "info");
   await restoreLatestJob();
 }
 
 init().catch((error) => {
   console.error(error);
-  alert(`初始化失败: ${error.message}`);
+  showBanner(`初始化失败: ${error.message}`, "error");
 });
