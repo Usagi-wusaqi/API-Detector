@@ -9,11 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"os/exec"
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Usagi-wusaqi/API-Detector/internal/configutil"
@@ -50,18 +52,21 @@ func (s *Server) Run(noOpen bool) error {
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(staticFS))))
 	mux.HandleFunc("/", s.handleIndex)
 
-	server := &http.Server{
-		Addr:    s.addr,
-		Handler: mux,
+	server := &http.Server{Handler: mux}
+	listener, url, fallback, err := listenWithFallback(s.addr)
+	if err != nil {
+		return err
+	}
+	if fallback {
+		fmt.Println("Requested port is busy, switched to", listener.Addr().String())
 	}
 
-	url := "http://" + s.addr
 	fmt.Println("GUI listening on", url)
 	if !noOpen {
 		go openBrowser(url)
 	}
 
-	return server.ListenAndServe()
+	return server.Serve(listener)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -159,6 +164,18 @@ func (s *Server) handleJobRoutes(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 		_, _ = w.Write(content)
+		return
+	}
+
+	if len(parts) == 2 && parts[1] == "report" && r.Method == http.MethodGet {
+		job, err := s.manager.snapshot(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="job_%s_report.json"`, id))
+		_ = json.NewEncoder(w).Encode(job)
 		return
 	}
 
@@ -400,10 +417,11 @@ func (m *jobManager) stream(w http.ResponseWriter, r *http.Request, id string) e
 	ch := make(chan jobEvent, 64)
 	job.subs[ch] = struct{}{}
 	snapshot := jobSnapshot{
-		ID:      job.id,
-		Status:  job.status,
-		Summary: job.summary,
-		Results: toGUIResults(job.results),
+		ID:        job.id,
+		Status:    job.status,
+		StartedAt: job.startedAt.Format(time.RFC3339),
+		Summary:   job.summary,
+		Results:   toGUIResults(job.results),
 	}
 	m.mu.Unlock()
 
@@ -508,4 +526,35 @@ func openBrowser(url string) {
 		cmd = exec.Command("xdg-open", url)
 	}
 	_ = cmd.Start()
+}
+
+func listenWithFallback(addr string) (net.Listener, string, bool, error) {
+	listener, err := net.Listen("tcp", addr)
+	if err == nil {
+		return listener, "http://" + listener.Addr().String(), false, nil
+	}
+	if !isAddrInUse(err) {
+		return nil, "", false, err
+	}
+
+	host, _, splitErr := net.SplitHostPort(addr)
+	if splitErr != nil {
+		return nil, "", false, err
+	}
+
+	listener, fallbackErr := net.Listen("tcp", net.JoinHostPort(host, "0"))
+	if fallbackErr != nil {
+		return nil, "", false, fallbackErr
+	}
+	return listener, "http://" + listener.Addr().String(), true, nil
+}
+
+func isAddrInUse(err error) bool {
+	if errors.Is(err, syscall.EADDRINUSE) {
+		return true
+	}
+
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "address already in use") ||
+		strings.Contains(message, "only one usage of each socket address")
 }

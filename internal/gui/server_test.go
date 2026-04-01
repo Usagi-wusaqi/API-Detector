@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -99,5 +100,26 @@ func TestJobManagerExportByStatus(t *testing.T) {
 	}
 	if strings.TrimSpace(string(content)) != "sk-invalid" {
 		t.Fatalf("unexpected export content: %q", string(content))
+	}
+}
+
+func TestListenWithFallbackWhenPortOccupied(t *testing.T) {
+	occupied, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen returned error: %v", err)
+	}
+	defer occupied.Close()
+
+	listener, url, fallback, err := listenWithFallback(occupied.Addr().String())
+	if err != nil {
+		t.Fatalf("listenWithFallback returned error: %v", err)
+	}
+	defer listener.Close()
+
+	if !fallback {
+		t.Fatal("expected fallback to be used")
+	}
+	if !strings.HasPrefix(url, "http://127.0.0.1:") {
+		t.Fatalf("unexpected fallback url: %q", url)
 	}
 }

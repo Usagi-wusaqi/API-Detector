@@ -8,6 +8,8 @@ const state = {
   summary: { total: 0, checked: 0, valid: 0, invalid: 0, error: 0, canceled: 0, keys_per_second: 0 },
 };
 
+const storageKey = "apidetect.gui.preferences.v1";
+
 const elements = {
   provider: document.getElementById("provider"),
   concurrency: document.getElementById("concurrency"),
@@ -21,6 +23,7 @@ const elements = {
   keys: document.getElementById("keys"),
   start: document.getElementById("start"),
   cancel: document.getElementById("cancel"),
+  exportReport: document.getElementById("export-report"),
   exportValid: document.getElementById("export-valid"),
   exportInvalid: document.getElementById("export-invalid"),
   exportError: document.getElementById("export-error"),
@@ -40,6 +43,7 @@ const elements = {
   searchQuery: document.getElementById("search-query"),
   jobHistory: document.getElementById("job-history"),
   refreshHistory: document.getElementById("refresh-history"),
+  customPanel: document.getElementById("custom-panel"),
 };
 
 async function loadProviders() {
@@ -119,6 +123,7 @@ function renderResults() {
     elements.resultsBody.appendChild(row);
   }
 
+  elements.exportReport.disabled = !state.jobId;
   elements.exportValid.disabled = state.results.every((item) => item.status !== "valid");
   elements.exportInvalid.disabled = state.results.every((item) => item.status !== "invalid");
   elements.exportError.disabled = state.results.every((item) => item.status !== "error");
@@ -156,6 +161,15 @@ function renderHistory() {
 function downloadStatus(status, filename) {
   if (!state.jobId) return;
   const url = `/api/jobs/${state.jobId}/results?status=${encodeURIComponent(status)}`;
+  downloadUrl(url, filename);
+}
+
+function downloadReport() {
+  if (!state.jobId) return;
+  downloadUrl(`/api/jobs/${state.jobId}/report`, `job_${state.jobId}_report.json`);
+}
+
+function downloadUrl(url, filename) {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
@@ -241,6 +255,7 @@ async function startJob() {
 
   const data = await response.json();
   state.jobId = data.id;
+  await refreshHistory();
   connectEvents(state.jobId);
 }
 
@@ -294,20 +309,87 @@ function wireFileImport() {
   });
 }
 
+function syncCustomPanel() {
+  elements.customPanel.classList.toggle("hidden", elements.provider.value !== "custom");
+}
+
+function savePreferences() {
+  localStorage.setItem(storageKey, JSON.stringify({
+    provider: elements.provider.value,
+    concurrency: elements.concurrency.value,
+    timeout: elements.timeout.value,
+    format: elements.format.value,
+    customUrl: elements.customUrl.value,
+    customMethod: elements.customMethod.value,
+    customAuthMode: elements.customAuthMode.value,
+    customHeaders: elements.customHeaders.value,
+    customBody: elements.customBody.value,
+    statusFilter: elements.statusFilter.value,
+    sortOrder: elements.sortOrder.value,
+    searchQuery: elements.searchQuery.value,
+  }));
+}
+
+function restorePreferences() {
+  const raw = localStorage.getItem(storageKey);
+  if (!raw) return;
+
+  try {
+    const payload = JSON.parse(raw);
+    elements.provider.value = payload.provider || elements.provider.value;
+    elements.concurrency.value = payload.concurrency || elements.concurrency.value;
+    elements.timeout.value = payload.timeout || elements.timeout.value;
+    elements.format.value = payload.format || elements.format.value;
+    elements.customUrl.value = payload.customUrl || "";
+    elements.customMethod.value = payload.customMethod || elements.customMethod.value;
+    elements.customAuthMode.value = payload.customAuthMode || elements.customAuthMode.value;
+    elements.customHeaders.value = payload.customHeaders || "";
+    elements.customBody.value = payload.customBody || "";
+    elements.statusFilter.value = payload.statusFilter || elements.statusFilter.value;
+    elements.sortOrder.value = payload.sortOrder || elements.sortOrder.value;
+    elements.searchQuery.value = payload.searchQuery || "";
+  } catch (error) {
+    console.warn("Failed to restore preferences", error);
+  }
+}
+
 function wireActions() {
   elements.start.addEventListener("click", startJob);
   elements.cancel.addEventListener("click", cancelJob);
+  elements.exportReport.addEventListener("click", downloadReport);
   elements.exportValid.addEventListener("click", () => downloadStatus("valid", "valid_keys.txt"));
   elements.exportInvalid.addEventListener("click", () => downloadStatus("invalid", "invalid_keys.txt"));
   elements.exportError.addEventListener("click", () => downloadStatus("error", "error_keys.txt"));
   elements.refreshHistory.addEventListener("click", refreshHistory);
-  elements.statusFilter.addEventListener("change", renderResults);
-  elements.sortOrder.addEventListener("change", renderResults);
-  elements.searchQuery.addEventListener("input", renderResults);
+  elements.statusFilter.addEventListener("change", () => { savePreferences(); renderResults(); });
+  elements.sortOrder.addEventListener("change", () => { savePreferences(); renderResults(); });
+  elements.searchQuery.addEventListener("input", () => { savePreferences(); renderResults(); });
+
+  [
+    elements.provider,
+    elements.concurrency,
+    elements.timeout,
+    elements.format,
+    elements.customUrl,
+    elements.customMethod,
+    elements.customAuthMode,
+    elements.customHeaders,
+    elements.customBody,
+  ].forEach((element) => {
+    element.addEventListener("change", () => {
+      if (element === elements.provider) {
+        syncCustomPanel();
+      }
+      savePreferences();
+    });
+    element.addEventListener("input", savePreferences);
+  });
 }
 
 async function init() {
   await loadProviders();
+  restorePreferences();
+  syncCustomPanel();
   wireFileImport();
   wireActions();
   updateSummary(state.summary);
