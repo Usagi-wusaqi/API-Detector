@@ -10,21 +10,35 @@ const state = {
 };
 
 const storageKey = "apidetect.gui.preferences.v1";
+const timeoutUnits = { ms: 1, s: 1000, m: 60 * 1000, h: 60 * 60 * 1000 };
 
 const elements = {
   versionBadge: document.getElementById("version-badge"),
   provider: document.getElementById("provider"),
-  concurrency: document.getElementById("concurrency"),
-  timeout: document.getElementById("timeout"),
-  format: document.getElementById("format"),
+  endpointUrl: document.getElementById("endpoint-url"),
   proxyMode: document.getElementById("proxy-mode"),
   proxyUrl: document.getElementById("proxy-url"),
   proxyUrlWrap: document.getElementById("proxy-url-wrap"),
-  customUrl: document.getElementById("custom-url"),
+  timeout: document.getElementById("timeout"),
+  concurrency: document.getElementById("concurrency"),
+  format: document.getElementById("format"),
   customMethod: document.getElementById("custom-method"),
   customAuthMode: document.getElementById("custom-auth-mode"),
   customHeaders: document.getElementById("custom-headers"),
   customBody: document.getElementById("custom-body"),
+  proxyAdvancedDrawer: document.getElementById("proxy-advanced-drawer"),
+  providerAdvancedDrawer: document.getElementById("provider-advanced-drawer"),
+  proxyAdvancedTrigger: document.getElementById("proxy-advanced-trigger"),
+  providerAdvancedTrigger: document.getElementById("provider-advanced-trigger"),
+  proxyAdvancedClose: document.getElementById("proxy-advanced-close"),
+  providerAdvancedClose: document.getElementById("provider-advanced-close"),
+  proxyModeNote: document.getElementById("proxy-mode-note"),
+  providerAdvancedNote: document.getElementById("provider-advanced-note"),
+  spinboxButtons: Array.from(document.querySelectorAll(".spinbox-button")),
+  customMethodWrap: document.getElementById("custom-method-wrap"),
+  customAuthWrap: document.getElementById("custom-auth-wrap"),
+  customHeadersWrap: document.getElementById("custom-headers-wrap"),
+  customBodyWrap: document.getElementById("custom-body-wrap"),
   keys: document.getElementById("keys"),
   start: document.getElementById("start"),
   cancel: document.getElementById("cancel"),
@@ -56,7 +70,6 @@ const elements = {
   refreshHistory: document.getElementById("refresh-history"),
   clearHistory: document.getElementById("clear-history"),
   toggleHistory: document.getElementById("toggle-history"),
-  customPanel: document.getElementById("custom-panel"),
   banner: document.getElementById("banner"),
 };
 
@@ -78,10 +91,87 @@ async function loadProviders() {
   for (const provider of providers) {
     const option = document.createElement("option");
     option.value = provider.name;
-    option.textContent = provider.aliases?.length
-      ? `${provider.name} (${provider.aliases.join(", ")})`
-      : provider.name;
+    option.textContent = provider.label || provider.name;
     elements.provider.appendChild(option);
+  }
+}
+
+function currentProviderMeta() {
+  return state.providers.find((provider) => provider.name === elements.provider.value) || null;
+}
+
+function emitInputEvent(element) {
+  element.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function adjustConcurrency(direction) {
+  const current = Number.parseInt(elements.concurrency.value, 10);
+  const base = Number.isFinite(current) && current > 0 ? current : 1;
+  elements.concurrency.value = String(Math.max(1, base + direction));
+  emitInputEvent(elements.concurrency);
+}
+
+function parseTimeoutValue(value) {
+  const normalized = String(value || "").trim().toLowerCase().replace(/\s+/g, "");
+  if (!normalized) {
+    return null;
+  }
+
+  const tokenPattern = /(\d+(?:\.\d+)?)(ms|s|m|h)/g;
+  let totalMilliseconds = 0;
+  let lastIndex = 0;
+  let lastUnit = "s";
+  let matched = false;
+  let match = tokenPattern.exec(normalized);
+
+  while (match) {
+    if (match.index !== lastIndex) {
+      return null;
+    }
+    matched = true;
+    totalMilliseconds += Number(match[1]) * timeoutUnits[match[2]];
+    lastIndex = tokenPattern.lastIndex;
+    lastUnit = match[2];
+    match = tokenPattern.exec(normalized);
+  }
+
+  if (matched && lastIndex === normalized.length) {
+    return { milliseconds: totalMilliseconds, unit: lastUnit };
+  }
+
+  const numericValue = Number(normalized);
+  if (Number.isFinite(numericValue) && numericValue > 0) {
+    return { milliseconds: numericValue * timeoutUnits.s, unit: "s" };
+  }
+
+  return null;
+}
+
+function formatTimeoutValue(milliseconds, unit) {
+  const normalizedUnit = timeoutUnits[unit] ? unit : "s";
+  const divisor = timeoutUnits[normalizedUnit];
+  const rawValue = milliseconds / divisor;
+  const displayValue = Number.isInteger(rawValue) ? rawValue : Number(rawValue.toFixed(3));
+  return `${displayValue}${normalizedUnit}`;
+}
+
+function adjustTimeout(direction) {
+  const parsed = parseTimeoutValue(elements.timeout.value);
+  const unit = parsed?.unit || "s";
+  const stepMilliseconds = timeoutUnits[unit] || timeoutUnits.s;
+  const baseMilliseconds = parsed?.milliseconds || (10 * timeoutUnits.s);
+  const nextMilliseconds = Math.max(stepMilliseconds, baseMilliseconds + (direction * stepMilliseconds));
+  elements.timeout.value = formatTimeoutValue(nextMilliseconds, unit);
+  emitInputEvent(elements.timeout);
+}
+
+function stepField(target, direction) {
+  if (target === "concurrency") {
+    adjustConcurrency(direction);
+    return;
+  }
+  if (target === "timeout") {
+    adjustTimeout(direction);
   }
 }
 
@@ -296,7 +386,7 @@ async function startJob() {
     timeout: elements.timeout.value,
     proxy_mode: elements.proxyMode.value,
     proxy_url: elements.proxyUrl.value,
-    custom_url: elements.customUrl.value,
+    custom_url: elements.endpointUrl.value.trim(),
     custom_method: elements.customMethod.value,
     custom_auth_mode: elements.customAuthMode.value,
     custom_headers: elements.customHeaders.value,
@@ -386,16 +476,39 @@ function wireFileImport() {
   });
 }
 
+function wireSpinboxes() {
+  for (const button of elements.spinboxButtons) {
+    button.addEventListener("click", () => {
+      const direction = button.dataset.direction === "down" ? -1 : 1;
+      stepField(button.dataset.target, direction);
+      document.getElementById(button.dataset.target)?.focus({ preventScroll: true });
+    });
+  }
+
+  [
+    { element: elements.concurrency, target: "concurrency" },
+    { element: elements.timeout, target: "timeout" },
+  ].forEach(({ element, target }) => {
+    element.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
+        return;
+      }
+      event.preventDefault();
+      stepField(target, event.key === "ArrowDown" ? -1 : 1);
+    });
+  });
+}
+
 function resetSettings() {
   localStorage.removeItem(storageKey);
-  elements.provider.value = "openai";
+  elements.provider.value = "custom";
+  elements.endpointUrl.value = "";
   elements.concurrency.value = "100";
   elements.timeout.value = "10s";
   elements.format.value = "text";
   elements.pageSize.value = "50";
   elements.proxyMode.value = "env";
   elements.proxyUrl.value = "";
-  elements.customUrl.value = "";
   elements.customMethod.value = "GET";
   elements.customAuthMode.value = "bearer";
   elements.customHeaders.value = "";
@@ -405,29 +518,104 @@ function resetSettings() {
   elements.searchQuery.value = "";
   state.currentPage = 1;
   syncCustomPanel();
+  syncEndpointField();
   syncProxyPanel();
+  elements.providerAdvancedDrawer.classList.add("hidden");
+  elements.proxyAdvancedDrawer.classList.add("hidden");
+  syncProviderAdvancedPanel();
+  syncProxyAdvancedPanel();
   renderResults();
   showBanner("已重置界面设置。", "success");
 }
 
 function syncCustomPanel() {
-  elements.customPanel.classList.toggle("hidden", elements.provider.value !== "custom");
+  const isCustom = elements.provider.value === "custom";
+  elements.customMethodWrap.classList.toggle("hidden", !isCustom);
+  elements.customAuthWrap.classList.toggle("hidden", !isCustom);
+  elements.customHeadersWrap.classList.toggle("hidden", !isCustom);
+  elements.customBodyWrap.classList.toggle("hidden", !isCustom);
+  const provider = currentProviderMeta();
+  if (isCustom) {
+    elements.providerAdvancedNote.textContent = "以下设置均为可选，不填将使用默认请求行为。";
+  } else if (provider) {
+    elements.providerAdvancedNote.textContent = `当前为 ${provider.label || provider.name}，接口与请求方式按预设展示。`;
+  } else {
+    elements.providerAdvancedNote.textContent = "当前供应商使用预设配置。";
+  }
+  syncProviderAdvancedPanel();
+}
+
+function syncEndpointField() {
+  const provider = currentProviderMeta();
+  if (!provider) return;
+
+  const isCustom = provider.name === "custom";
+  elements.endpointUrl.readOnly = !isCustom;
+  if (isCustom) {
+    elements.endpointUrl.placeholder = provider.notes || "请输入自定义供应商接口地址";
+  } else {
+    elements.endpointUrl.value = provider.url || "";
+    elements.endpointUrl.placeholder = "";
+  }
 }
 
 function syncProxyPanel() {
-  elements.proxyUrlWrap.classList.toggle("hidden", elements.proxyMode.value !== "custom");
+  const isCustomProxy = elements.proxyMode.value === "custom";
+  if (isCustomProxy && !elements.proxyUrl.value.trim()) {
+    elements.proxyUrl.value = "http://127.0.0.1:8080";
+  }
+  elements.proxyUrl.disabled = !isCustomProxy;
+  elements.proxyModeNote.textContent = isCustomProxy
+    ? "仅在自定义模式下使用代理地址。"
+    : "当前模式不会使用代理地址；如需手动代理，请切换为自定义模式。";
+  syncProxyAdvancedPanel();
+}
+
+function syncProviderAdvancedPanel() {
+  const expanded = !elements.providerAdvancedDrawer.classList.contains("hidden");
+  elements.providerAdvancedTrigger.textContent = expanded ? "收起高级设置" : "高级设置";
+  syncModalBodyLock();
+}
+
+function syncProxyAdvancedPanel() {
+  const expanded = !elements.proxyAdvancedDrawer.classList.contains("hidden");
+  elements.proxyAdvancedTrigger.textContent = expanded ? "收起高级设置" : "高级设置";
+  syncModalBodyLock();
+}
+
+function syncModalBodyLock() {
+  const hasOpenModal = !elements.providerAdvancedDrawer.classList.contains("hidden")
+    || !elements.proxyAdvancedDrawer.classList.contains("hidden");
+  document.body.classList.toggle("modal-open", hasOpenModal);
+}
+
+function closeProviderAdvancedPanel() {
+  elements.providerAdvancedDrawer.classList.add("hidden");
+  syncProviderAdvancedPanel();
+}
+
+function closeProxyAdvancedPanel() {
+  elements.proxyAdvancedDrawer.classList.add("hidden");
+  syncProxyAdvancedPanel();
+}
+
+function closeAllAdvancedPanels() {
+  elements.providerAdvancedDrawer.classList.add("hidden");
+  elements.proxyAdvancedDrawer.classList.add("hidden");
+  syncProviderAdvancedPanel();
+  syncProxyAdvancedPanel();
 }
 
 function savePreferences() {
   localStorage.setItem(storageKey, JSON.stringify({
     provider: elements.provider.value,
+    endpointUrl: elements.endpointUrl.value,
     concurrency: elements.concurrency.value,
     timeout: elements.timeout.value,
     format: elements.format.value,
     pageSize: elements.pageSize.value,
     proxyMode: elements.proxyMode.value,
     proxyUrl: elements.proxyUrl.value,
-    customUrl: elements.customUrl.value,
     customMethod: elements.customMethod.value,
     customAuthMode: elements.customAuthMode.value,
     customHeaders: elements.customHeaders.value,
@@ -445,13 +633,13 @@ function restorePreferences() {
   try {
     const payload = JSON.parse(raw);
     elements.provider.value = payload.provider || elements.provider.value;
+    elements.endpointUrl.value = payload.endpointUrl || "";
     elements.concurrency.value = payload.concurrency || elements.concurrency.value;
     elements.timeout.value = payload.timeout || elements.timeout.value;
     elements.format.value = payload.format || elements.format.value;
     elements.pageSize.value = payload.pageSize || elements.pageSize.value;
     elements.proxyMode.value = payload.proxyMode || elements.proxyMode.value;
     elements.proxyUrl.value = payload.proxyUrl || "";
-    elements.customUrl.value = payload.customUrl || "";
     elements.customMethod.value = payload.customMethod || elements.customMethod.value;
     elements.customAuthMode.value = payload.customAuthMode || elements.customAuthMode.value;
     elements.customHeaders.value = payload.customHeaders || "";
@@ -474,6 +662,31 @@ function wireActions() {
   elements.refreshHistory.addEventListener("click", refreshHistory);
   elements.clearHistory.addEventListener("click", clearHistory);
   elements.toggleHistory.addEventListener("click", toggleHistory);
+  elements.providerAdvancedTrigger.addEventListener("click", () => {
+    elements.providerAdvancedDrawer.classList.toggle("hidden");
+    syncProviderAdvancedPanel();
+  });
+  elements.proxyAdvancedTrigger.addEventListener("click", () => {
+    elements.proxyAdvancedDrawer.classList.toggle("hidden");
+    syncProxyAdvancedPanel();
+  });
+  elements.providerAdvancedClose?.addEventListener("click", closeProviderAdvancedPanel);
+  elements.proxyAdvancedClose?.addEventListener("click", closeProxyAdvancedPanel);
+  elements.providerAdvancedDrawer.addEventListener("click", (event) => {
+    if (event.target === elements.providerAdvancedDrawer) {
+      closeProviderAdvancedPanel();
+    }
+  });
+  elements.proxyAdvancedDrawer.addEventListener("click", (event) => {
+    if (event.target === elements.proxyAdvancedDrawer) {
+      closeProxyAdvancedPanel();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAllAdvancedPanels();
+    }
+  });
   elements.resetSettings.addEventListener("click", resetSettings);
   elements.statusFilter.addEventListener("change", () => { state.currentPage = 1; savePreferences(); renderResults(); });
   elements.sortOrder.addEventListener("change", () => { state.currentPage = 1; savePreferences(); renderResults(); });
@@ -492,12 +705,12 @@ function wireActions() {
 
   [
     elements.provider,
+    elements.endpointUrl,
     elements.concurrency,
     elements.timeout,
     elements.format,
     elements.proxyMode,
     elements.proxyUrl,
-    elements.customUrl,
     elements.customMethod,
     elements.customAuthMode,
     elements.customHeaders,
@@ -506,6 +719,7 @@ function wireActions() {
     element.addEventListener("change", () => {
       if (element === elements.provider) {
         syncCustomPanel();
+        syncEndpointField();
       }
       if (element === elements.proxyMode) {
         syncProxyPanel();
@@ -520,11 +734,14 @@ function validateForm() {
   if (!elements.keys.value.trim()) {
     return "请至少输入一个 key。";
   }
+  if (!Number.isInteger(Number(elements.concurrency.value)) || Number(elements.concurrency.value) < 1) {
+    return "并发数必须是大于 0 的整数。";
+  }
   if (!elements.timeout.value.trim()) {
     return "请填写超时。";
   }
-  if (elements.provider.value === "custom" && !elements.customUrl.value.trim()) {
-    return "自定义 Provider 必须填写 URL。";
+  if (elements.provider.value === "custom" && !elements.endpointUrl.value.trim()) {
+    return "自定义供应商必须填写接口地址。";
   }
   if (elements.proxyMode.value === "custom" && !elements.proxyUrl.value.trim()) {
     return "自定义代理模式必须填写代理地址。";
@@ -536,11 +753,20 @@ async function init() {
   await loadMeta();
   await loadProviders();
   restorePreferences();
+  if (!elements.provider.value) {
+    elements.provider.value = "custom";
+  }
   syncCustomPanel();
+  syncEndpointField();
   syncProxyPanel();
+  elements.providerAdvancedDrawer.classList.add("hidden");
+  elements.proxyAdvancedDrawer.classList.add("hidden");
+  syncProviderAdvancedPanel();
+  syncProxyAdvancedPanel();
   document.querySelector(".history-panel")?.classList.add("collapsed");
   elements.toggleHistory.textContent = "展开";
   wireFileImport();
+  wireSpinboxes();
   wireActions();
   updateSummary(state.summary);
   renderResults();

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 
 	"github.com/Usagi-wusaqi/API-Detector/internal/appmeta"
@@ -13,6 +12,7 @@ import (
 
 type Metadata struct {
 	Name    string   `json:"name"`
+	Label   string   `json:"label"`
 	Aliases []string `json:"aliases,omitempty"`
 	Method  string   `json:"method"`
 	URL     string   `json:"url"`
@@ -35,9 +35,22 @@ type catalogEntry struct {
 }
 
 var catalog = map[string]catalogEntry{
+	"custom": {
+		meta: Metadata{
+			Name:   "custom",
+			Label:  "自定义供应商",
+			Method: http.MethodGet,
+			URL:    "",
+			Notes:  "请输入自定义供应商接口地址",
+		},
+		factory: func(options BuildOptions) (core.Provider, error) {
+			return NewCustomBearerProvider(options)
+		},
+	},
 	"anthropic": {
 		meta: Metadata{
 			Name:    "anthropic",
+			Label:   "Anthropic (anthropic)",
 			Aliases: []string{"claude"},
 			Method:  http.MethodPost,
 			URL:     "https://api.anthropic.com/v1/messages",
@@ -50,6 +63,7 @@ var catalog = map[string]catalogEntry{
 	"gemini": {
 		meta: Metadata{
 			Name:    "gemini",
+			Label:   "Google Gemini (gemini)",
 			Aliases: []string{"google"},
 			Method:  http.MethodGet,
 			URL:     "https://generativelanguage.googleapis.com/v1beta/models",
@@ -62,6 +76,7 @@ var catalog = map[string]catalogEntry{
 	"openai": {
 		meta: Metadata{
 			Name:   "openai",
+			Label:  "OpenAI (openai)",
 			Method: http.MethodGet,
 			URL:    "https://api.openai.com/v1/models",
 			Notes:  "OpenAI Models API.",
@@ -73,6 +88,7 @@ var catalog = map[string]catalogEntry{
 	"groq": {
 		meta: Metadata{
 			Name:   "groq",
+			Label:  "Groq (groq)",
 			Method: http.MethodGet,
 			URL:    "https://api.groq.com/openai/v1/models",
 			Notes:  "Groq OpenAI-compatible models endpoint.",
@@ -84,6 +100,7 @@ var catalog = map[string]catalogEntry{
 	"mistral": {
 		meta: Metadata{
 			Name:   "mistral",
+			Label:  "Mistral (mistral)",
 			Method: http.MethodGet,
 			URL:    "https://api.mistral.ai/v1/models",
 			Notes:  "Mistral list models endpoint.",
@@ -95,6 +112,7 @@ var catalog = map[string]catalogEntry{
 	"deepseek": {
 		meta: Metadata{
 			Name:   "deepseek",
+			Label:  "DeepSeek (deepseek)",
 			Method: http.MethodGet,
 			URL:    "https://api.deepseek.com/models",
 			Notes:  "DeepSeek list models endpoint.",
@@ -106,6 +124,7 @@ var catalog = map[string]catalogEntry{
 	"openrouter": {
 		meta: Metadata{
 			Name:    "openrouter",
+			Label:   "OpenRouter (openrouter)",
 			Aliases: []string{"or"},
 			Method:  http.MethodGet,
 			URL:     "https://openrouter.ai/api/v1/models",
@@ -115,27 +134,18 @@ var catalog = map[string]catalogEntry{
 			return NewOpenAICompatibleProvider("openrouter", "https://openrouter.ai/api/v1/models"), nil
 		},
 	},
-	"custom": {
-		meta: Metadata{
-			Name:   "custom",
-			Method: http.MethodGet,
-			URL:    "",
-			Notes:  "Custom Bearer-authenticated endpoint.",
-		},
-		factory: func(options BuildOptions) (core.Provider, error) {
-			return NewCustomBearerProvider(options)
-		},
-	},
 }
 
 func Builtins() []Metadata {
-	out := make([]Metadata, 0, len(catalog))
-	for _, entry := range catalog {
+	order := []string{"custom", "openai", "anthropic", "gemini", "groq", "mistral", "deepseek", "openrouter"}
+	out := make([]Metadata, 0, len(order))
+	for _, key := range order {
+		entry, ok := catalog[key]
+		if !ok {
+			continue
+		}
 		out = append(out, entry.meta)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].Name < out[j].Name
-	})
 	return out
 }
 

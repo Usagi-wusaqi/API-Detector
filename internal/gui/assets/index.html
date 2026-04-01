@@ -36,68 +36,101 @@
 
           <div class="grid-two">
             <label>
-              <span>Provider</span>
+              <span class="field-title">供应商 (Provider)</span>
               <select id="provider"></select>
             </label>
             <label>
-              <span>并发数</span>
-              <input id="concurrency" type="number" min="1" value="100" />
+              <span class="field-title with-action">
+                <span>接口地址 (Endpoint URL)</span>
+                <button id="provider-advanced-trigger" class="ghost tiny" type="button">高级设置</button>
+              </span>
+              <input id="endpoint-url" type="text" />
             </label>
             <label>
-              <span>超时</span>
-              <input id="timeout" type="text" value="10s" />
+              <span class="field-title">超时 (Timeout)</span>
+              <div class="spinbox">
+                <input id="timeout" type="text" value="10s" />
+                <div class="spinbox-controls">
+                  <button class="spinbox-button" type="button" data-target="timeout" data-direction="up" aria-label="增加超时"></button>
+                  <button class="spinbox-button" type="button" data-target="timeout" data-direction="down" aria-label="减少超时"></button>
+                </div>
+              </div>
             </label>
             <label>
-              <span>输出格式</span>
-              <select id="format">
-                <option value="text">text</option>
-                <option value="json">json</option>
-              </select>
-            </label>
-            <label>
-              <span>代理模式</span>
+              <span class="field-title with-action">
+                <span>代理模式 (Proxy Mode)</span>
+                <button id="proxy-advanced-trigger" class="ghost tiny" type="button">高级设置</button>
+              </span>
               <select id="proxy-mode">
                 <option value="env">跟随环境 (env)</option>
                 <option value="direct">直连 (direct)</option>
                 <option value="custom">自定义 (custom)</option>
               </select>
             </label>
-            <label id="proxy-url-wrap">
-              <span>代理地址</span>
-              <input id="proxy-url" type="text" placeholder="http://127.0.0.1:7890" />
+            <label>
+              <span class="field-title">并发数 (Concurrency)</span>
+              <div class="spinbox">
+                <input id="concurrency" type="number" min="1" step="1" value="100" />
+                <div class="spinbox-controls">
+                  <button class="spinbox-button" type="button" data-target="concurrency" data-direction="up" aria-label="增加并发数"></button>
+                  <button class="spinbox-button" type="button" data-target="concurrency" data-direction="down" aria-label="减少并发数"></button>
+                </div>
+              </div>
+            </label>
+            <label>
+              <span class="field-title">输出格式 (Output Format)</span>
+              <select id="format">
+                <option value="text">文本 (text)</option>
+                <option value="json">JSON (json)</option>
+              </select>
             </label>
           </div>
 
-          <div id="custom-panel" class="custom-panel">
-            <div class="custom-header">
-              <h3>自定义 Provider</h3>
-              <p>当 Provider 选择为 <code>custom</code> 时生效。</p>
+          <div id="proxy-advanced-drawer" class="advanced-drawer hidden" role="dialog" aria-modal="true" aria-labelledby="proxy-advanced-title">
+            <div class="advanced-dialog advanced-dialog-sm">
+              <div class="advanced-dialog-header">
+                <h3 id="proxy-advanced-title">代理高级设置</h3>
+                <button id="proxy-advanced-close" class="ghost tiny" type="button">关闭</button>
+              </div>
+              <p id="proxy-mode-note" class="advanced-hint"></p>
+              <div class="advanced-grid">
+                <label id="proxy-url-wrap">
+                  <span>代理地址 (Proxy URL)</span>
+                  <input id="proxy-url" type="text" placeholder="http://127.0.0.1:8080" />
+                </label>
+              </div>
             </div>
-            <div class="grid-two">
-              <label>
-                <span>URL</span>
-                <input id="custom-url" type="text" placeholder="https://example.com/check?key={key}" />
-              </label>
-              <label>
-                <span>Method</span>
-                <input id="custom-method" type="text" value="GET" />
-              </label>
-              <label>
-                <span>Auth Mode</span>
-                <select id="custom-auth-mode">
-                  <option value="bearer">Bearer (bearer)</option>
-                  <option value="none">无认证 (none)</option>
-                </select>
-              </label>
-              <label>
-                <span>附加请求头</span>
-                <textarea id="custom-headers" rows="4" placeholder="x-api-key: {key}"></textarea>
-              </label>
+          </div>
+
+          <div id="provider-advanced-drawer" class="advanced-drawer hidden" role="dialog" aria-modal="true" aria-labelledby="provider-advanced-title">
+            <div class="advanced-dialog">
+              <div class="advanced-dialog-header">
+                <h3 id="provider-advanced-title">自定义供应商高级设置</h3>
+                <button id="provider-advanced-close" class="ghost tiny" type="button">关闭</button>
+              </div>
+              <p id="provider-advanced-note" class="advanced-hint">以下设置均为可选，不填将使用默认请求行为。</p>
+              <div class="advanced-grid">
+                <label id="custom-method-wrap">
+                  <span>请求方法 (Method，可选)</span>
+                  <input id="custom-method" type="text" value="GET" placeholder="默认 GET，可改 POST" />
+                </label>
+                <label id="custom-auth-wrap">
+                  <span>认证方式 (Auth Mode，可选)</span>
+                  <select id="custom-auth-mode">
+                    <option value="bearer">Bearer（自动加 Authorization）</option>
+                    <option value="none">无认证（不加认证头）</option>
+                  </select>
+                </label>
+                <label id="custom-headers-wrap" class="span-2">
+                  <span>附加请求头 (Headers，可选)</span>
+                  <textarea id="custom-headers" rows="4" placeholder="每行一个请求头，格式 Header: Value"></textarea>
+                </label>
+                <label id="custom-body-wrap" class="span-2">
+                  <span>请求体 (Body，可选)</span>
+                  <textarea id="custom-body" rows="5" placeholder="可选，填写 JSON 请求体"></textarea>
+                </label>
+              </div>
             </div>
-            <label>
-              <span>请求体</span>
-              <textarea id="custom-body" rows="5" placeholder='{"key":"{key}"}'></textarea>
-            </label>
           </div>
 
           <label class="keys-block">
