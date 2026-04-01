@@ -35,5 +35,8 @@ jobs:
       - name: Build CLI
         run: go build ./cmd/apidetect
 
+      - name: Build GUI launcher
+        run: go build ./cmd/apidetect-gui
+
       - name: Smoke test providers command
         run: go run ./cmd/apidetect providers

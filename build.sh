@@ -21,9 +21,12 @@ export GOMODCACHE="$REPO_ROOT/.cache/gomod"
 echo "Using Go: $GO_BIN"
 "$GO_BIN" version
 
-BINARY_PATH="$REPO_ROOT/$OUTPUT_DIR/apidetect"
-"$GO_BIN" build -trimpath -o "$BINARY_PATH" ./cmd/apidetect
+CLI_PATH="$REPO_ROOT/$OUTPUT_DIR/apidetect"
+GUI_PATH="$REPO_ROOT/$OUTPUT_DIR/apidetect-gui"
+"$GO_BIN" build -trimpath -o "$CLI_PATH" ./cmd/apidetect
+"$GO_BIN" build -trimpath -o "$GUI_PATH" ./cmd/apidetect-gui
 
 echo
 echo "Build completed:"
-echo "  $BINARY_PATH"
+echo "  $CLI_PATH"
+echo "  $GUI_PATH"

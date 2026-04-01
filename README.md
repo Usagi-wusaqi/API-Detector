@@ -55,12 +55,17 @@ Linux / macOS 可以运行：
 ./build.sh
 ```
 
+构建后会得到两个入口：
+
+- `apidetect` / `apidetect.exe`：CLI
+- `apidetect-gui` / `apidetect-gui.exe`：GUI 启动器
+
 ## 基本用法
 
 启动本地 GUI：
 
 ```bash
-go run ./cmd/apidetect gui
+go run ./cmd/apidetect-gui
 ```
 
 如果不想自动打开浏览器：

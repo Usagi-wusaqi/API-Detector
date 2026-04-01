@@ -35,9 +35,13 @@ $env:GOMODCACHE = $modCacheDir
 Write-Host "Using Go:" $goExe
 & $goExe version
 
-$binaryPath = Join-Path $outputDirPath "apidetect.exe"
-& $goExe build -trimpath -o $binaryPath .\cmd\apidetect
+$cliPath = Join-Path $outputDirPath "apidetect.exe"
+$guiPath = Join-Path $outputDirPath "apidetect-gui.exe"
+
+& $goExe build -trimpath -o $cliPath .\cmd\apidetect
+& $goExe build -trimpath -o $guiPath .\cmd\apidetect-gui
 
 Write-Host ""
 Write-Host "Build completed:"
-Write-Host "  $binaryPath"
+Write-Host "  $cliPath"
+Write-Host "  $guiPath"
