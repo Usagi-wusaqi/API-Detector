@@ -154,8 +154,24 @@ go run ./cmd/apidetect check --provider gemini --input keys.txt --format json
 
 - `CI` 会在 Windows、Linux、macOS 上执行 `go test`、`go build` 和基础 smoke test
 - 打 tag 后由 `GoReleaser` 打包并上传到 GitHub Releases
+- 也可以在 GitHub Actions 页面手动触发 `Release` workflow
 - 发行包为便携压缩包，包含二进制、`README.md`、`LICENSE`
 - macOS 当前为未签名发行包，首次运行可能需要手动放行
+
+推荐发布方式：
+
+- `dist/release/apidetect_v3.0.0_windows_amd64.zip`
+- `dist/release/apidetect_v3.0.0_linux_amd64.tar.gz`
+- `dist/release/apidetect_v3.0.0_darwin_amd64.tar.gz`
+- `dist/release/apidetect_v3.0.0_darwin_arm64.tar.gz`
+- `dist/release/checksums.txt`
+
+发布步骤：
+
+```bash
+git tag v3.0.0
+git push origin v3.0.0
+```
 
 ## 退出码
 
