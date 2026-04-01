@@ -12,6 +12,7 @@ const state = {
 const storageKey = "apidetect.gui.preferences.v1";
 
 const elements = {
+  versionBadge: document.getElementById("version-badge"),
   provider: document.getElementById("provider"),
   concurrency: document.getElementById("concurrency"),
   timeout: document.getElementById("timeout"),
@@ -32,6 +33,7 @@ const elements = {
   exportInvalid: document.getElementById("export-invalid"),
   exportError: document.getElementById("export-error"),
   importFile: document.getElementById("import-file"),
+  resetSettings: document.getElementById("reset-settings"),
   fileInput: document.getElementById("file-input"),
   resultsBody: document.getElementById("results-body"),
   statusPill: document.getElementById("status-pill"),
@@ -51,9 +53,20 @@ const elements = {
   pageInfo: document.getElementById("page-info"),
   jobHistory: document.getElementById("job-history"),
   refreshHistory: document.getElementById("refresh-history"),
+  clearHistory: document.getElementById("clear-history"),
   customPanel: document.getElementById("custom-panel"),
   banner: document.getElementById("banner"),
 };
+
+async function loadMeta() {
+  const response = await fetch("/api/meta");
+  if (!response.ok) return;
+  const meta = await response.json();
+  if (meta.version) {
+    document.title = `API Detector GUI ${meta.version}`;
+    elements.versionBadge.textContent = meta.version;
+  }
+}
 
 async function loadProviders() {
   const response = await fetch("/api/providers");
@@ -242,11 +255,13 @@ function connectEvents(jobId) {
     elements.statusPill.className = "status-pill done";
     setRunning(false);
     closeEvents();
+    showBanner("检测完成。", "success");
   });
 
   source.onerror = () => {
     closeEvents();
     setRunning(false);
+    showBanner("与本地检测服务的事件连接已断开。", "error");
   };
 }
 
@@ -312,6 +327,18 @@ async function refreshHistory() {
   renderHistory();
 }
 
+async function clearHistory() {
+  const response = await fetch("/api/jobs", { method: "DELETE" });
+  if (!response.ok) {
+    showBanner("清理历史失败。", "error");
+    return;
+  }
+  const payload = await response.json();
+  state.jobs = [];
+  renderHistory();
+  showBanner(`已清理 ${payload.removed ?? 0} 条历史任务。`, "success");
+}
+
 async function loadJobSnapshot(jobId) {
   const snapshotResponse = await fetch(`/api/jobs/${jobId}`);
   if (!snapshotResponse.ok) return;
@@ -347,6 +374,30 @@ function wireFileImport() {
     if (!file) return;
     elements.keys.value = await file.text();
   });
+}
+
+function resetSettings() {
+  localStorage.removeItem(storageKey);
+  elements.provider.value = "openai";
+  elements.concurrency.value = "100";
+  elements.timeout.value = "10s";
+  elements.format.value = "text";
+  elements.pageSize.value = "50";
+  elements.proxyMode.value = "env";
+  elements.proxyUrl.value = "";
+  elements.customUrl.value = "";
+  elements.customMethod.value = "GET";
+  elements.customAuthMode.value = "bearer";
+  elements.customHeaders.value = "";
+  elements.customBody.value = "";
+  elements.statusFilter.value = "all";
+  elements.sortOrder.value = "index";
+  elements.searchQuery.value = "";
+  state.currentPage = 1;
+  syncCustomPanel();
+  syncProxyPanel();
+  renderResults();
+  showBanner("已重置界面设置。", "success");
 }
 
 function syncCustomPanel() {
@@ -411,6 +462,8 @@ function wireActions() {
   elements.exportInvalid.addEventListener("click", () => downloadStatus("invalid", "invalid_keys.txt"));
   elements.exportError.addEventListener("click", () => downloadStatus("error", "error_keys.txt"));
   elements.refreshHistory.addEventListener("click", refreshHistory);
+  elements.clearHistory.addEventListener("click", clearHistory);
+  elements.resetSettings.addEventListener("click", resetSettings);
   elements.statusFilter.addEventListener("change", () => { state.currentPage = 1; savePreferences(); renderResults(); });
   elements.sortOrder.addEventListener("change", () => { state.currentPage = 1; savePreferences(); renderResults(); });
   elements.searchQuery.addEventListener("input", () => { state.currentPage = 1; savePreferences(); renderResults(); });
@@ -469,6 +522,7 @@ function validateForm() {
 }
 
 async function init() {
+  await loadMeta();
   await loadProviders();
   restorePreferences();
   syncCustomPanel();

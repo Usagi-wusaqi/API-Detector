@@ -68,6 +68,8 @@ Linux / macOS 可以运行：
 go run ./cmd/apidetect-gui
 ```
 
+如果已经有一个 GUI 实例在运行，新的启动会直接复用已有实例，不会再起第二个服务端。
+
 如果不想自动打开浏览器：
 
 ```bash

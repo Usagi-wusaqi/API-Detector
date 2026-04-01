@@ -75,17 +75,20 @@ func TryReuseExistingInstance() (string, bool) {
 
 	var info instanceInfo
 	if err := json.Unmarshal(content, &info); err != nil || info.URL == "" {
+		_ = os.Remove(path)
 		return "", false
 	}
 
 	client := &http.Client{Timeout: 1200 * time.Millisecond}
 	response, err := client.Get(info.URL + "/api/health")
 	if err != nil {
+		_ = os.Remove(path)
 		return "", false
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
+		_ = os.Remove(path)
 		return "", false
 	}
 	return info.URL, true

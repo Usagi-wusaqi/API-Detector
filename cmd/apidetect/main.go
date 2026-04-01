@@ -411,6 +411,16 @@ func runServerMode(args []string, autoOpen bool) error {
 		}
 	}
 
+	if autoOpen {
+		if existingURL, ok := gui.TryReuseExistingInstance(); ok {
+			fmt.Fprintln(os.Stdout, gui.DescribeInstance(existingURL))
+			if !noOpen {
+				gui.OpenBrowser(existingURL)
+			}
+			return nil
+		}
+	}
+
 	server := gui.NewServer(listenAddr)
 	if err := server.Run(noOpen || !autoOpen); err != nil {
 		return err

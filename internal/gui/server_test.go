@@ -41,6 +41,21 @@ func TestHandleHealth(t *testing.T) {
 	}
 }
 
+func TestHandleMeta(t *testing.T) {
+	server := NewServer("127.0.0.1:0")
+	request := httptest.NewRequest(http.MethodGet, "/api/meta", nil)
+	recorder := httptest.NewRecorder()
+
+	server.handleMeta(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", recorder.Code, http.StatusOK)
+	}
+	if !strings.Contains(recorder.Body.String(), `"version"`) {
+		t.Fatalf("unexpected meta body: %s", recorder.Body.String())
+	}
+}
+
 func TestJobManagerStartAndSnapshot(t *testing.T) {
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -154,5 +169,22 @@ func TestJobManagerStartWithInvalidProxyAddsErrorResults(t *testing.T) {
 			t.Fatal("job did not complete in time")
 		}
 		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func TestJobManagerClearFinishedKeepsRunningJobs(t *testing.T) {
+	manager := newJobManager(nil)
+	manager.jobs["done"] = &job{id: "done", status: "done"}
+	manager.jobs["running"] = &job{id: "running", status: "running"}
+
+	removed := manager.clearFinished()
+	if removed != 1 {
+		t.Fatalf("unexpected removed count: got %d want 1", removed)
+	}
+	if _, ok := manager.jobs["done"]; ok {
+		t.Fatal("expected done job to be removed")
+	}
+	if _, ok := manager.jobs["running"]; !ok {
+		t.Fatal("expected running job to remain")
 	}
 }

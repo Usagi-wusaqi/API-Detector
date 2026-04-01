@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Usagi-wusaqi/API-Detector/internal/appmeta"
 	"github.com/Usagi-wusaqi/API-Detector/internal/configutil"
 	"github.com/Usagi-wusaqi/API-Detector/internal/core"
 	"github.com/Usagi-wusaqi/API-Detector/internal/providers"
@@ -42,6 +43,7 @@ func NewServer(addr string) *Server {
 func (s *Server) Run(noOpen bool) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.handleHealth)
+	mux.HandleFunc("/api/meta", s.handleMeta)
 	mux.HandleFunc("/api/providers", s.handleProviders)
 	mux.HandleFunc("/api/jobs", s.handleJobs)
 	mux.HandleFunc("/api/jobs/", s.handleJobRoutes)
@@ -76,6 +78,15 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+func (s *Server) handleMeta(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{
+		"name":       appmeta.Name,
+		"version":    appmeta.Version,
+		"commit":     appmeta.Commit,
+		"build_date": appmeta.BuildDate,
+	})
+}
+
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -97,6 +108,10 @@ func (s *Server) handleProviders(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		writeJSON(w, http.StatusOK, s.manager.list())
+		return
+	}
+	if r.Method == http.MethodDelete {
+		writeJSON(w, http.StatusOK, map[string]int{"removed": s.manager.clearFinished()})
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -317,6 +332,7 @@ func (m *jobManager) start(payload startJobPayload) (string, error) {
 				job.summary.Error++
 			}
 			m.broadcast(job, jobEvent{Type: "complete", Summary: job.summary})
+			_ = savePersistentJobs(m.jobs)
 			m.mu.Unlock()
 			return
 		}
@@ -400,6 +416,22 @@ func (m *jobManager) cancel(id string) error {
 	job.cancel()
 	_ = savePersistentJobs(m.jobs)
 	return nil
+}
+
+func (m *jobManager) clearFinished() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	removed := 0
+	for id, job := range m.jobs {
+		if job.status == "running" {
+			continue
+		}
+		delete(m.jobs, id)
+		removed++
+	}
+	_ = savePersistentJobs(m.jobs)
+	return removed
 }
 
 func (m *jobManager) export(id string, status string) ([]byte, error) {

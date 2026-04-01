@@ -15,7 +15,7 @@
           <p class="subhead">本地桌面界面，直接复用当前 Go 检测内核。</p>
         </div>
         <div class="hero-meta">
-          <div class="badge">v3.0.0</div>
+          <div id="version-badge" class="badge">v3.0.0</div>
           <div id="status-pill" class="status-pill idle">就绪</div>
         </div>
       </header>
@@ -28,6 +28,7 @@
             <h2>检测配置</h2>
             <div class="actions">
               <button id="import-file" class="ghost">导入文件</button>
+              <button id="reset-settings" class="ghost">重置设置</button>
               <input id="file-input" type="file" accept=".txt,.log,.key" hidden />
             </div>
           </div>
@@ -124,7 +125,10 @@
           <div class="history-panel">
             <div class="history-header">
               <h3>最近任务</h3>
-              <button id="refresh-history" class="ghost small">刷新</button>
+              <div class="actions">
+                <button id="refresh-history" class="ghost small">刷新</button>
+                <button id="clear-history" class="ghost small">清空历史</button>
+              </div>
             </div>
             <div id="job-history" class="job-history empty">暂无任务</div>
           </div>
