@@ -12,8 +12,16 @@ const state = {
 
 const storageKey = "apidetect.gui.preferences.v1";
 const timeoutUnits = { ms: 1, s: 1000, m: 60 * 1000, h: 60 * 60 * 1000 };
+let panelResizeObserver = null;
+const collapsedVisibleRows = 13;
+const expandedVisibleRows = 20;
+const fallbackTableRowHeight = 46;
+const expandedHistoryGrowRatio = 1;
 
 const elements = {
+  configPanel: document.querySelector(".config-panel"),
+  resultsPanel: document.querySelector(".results-panel"),
+  historyPanel: document.querySelector(".history-panel"),
   versionBadge: document.getElementById("version-badge"),
   provider: document.getElementById("provider"),
   endpointUrl: document.getElementById("endpoint-url"),
@@ -181,6 +189,85 @@ function stepField(target, direction) {
   }
 }
 
+function syncResultsPanelHeight() {
+  const configPanel = elements.configPanel;
+  const resultsPanel = elements.resultsPanel;
+  const historyPanel = elements.historyPanel;
+  const historyList = elements.jobHistory;
+  if (!configPanel || !resultsPanel) return;
+
+  if (window.matchMedia("(max-width: 1100px)").matches) {
+    configPanel.style.minHeight = "";
+    resultsPanel.style.height = "";
+    resultsPanel.style.minHeight = "";
+    if (historyPanel) {
+      historyPanel.style.minHeight = "";
+    }
+    if (historyList) {
+      historyList.style.maxHeight = "";
+    }
+    return;
+  }
+
+  const tableWrap = resultsPanel.querySelector(".results-table-wrap");
+  const headerRow = resultsPanel.querySelector(".results-table thead tr");
+  const bodyRow = resultsPanel.querySelector(".results-table tbody tr");
+  const historyExpanded = elements.historyPanel && !elements.historyPanel.classList.contains("collapsed");
+  const targetRows = historyExpanded ? expandedVisibleRows : collapsedVisibleRows;
+  const rowHeight = bodyRow ? bodyRow.getBoundingClientRect().height : fallbackTableRowHeight;
+  const headerHeight = headerRow ? headerRow.getBoundingClientRect().height : rowHeight;
+
+  if (historyPanel) {
+    historyPanel.style.minHeight = "";
+  }
+  if (historyList) {
+    historyList.style.maxHeight = "";
+  }
+
+  configPanel.style.minHeight = "";
+  let naturalLeftHeight = Math.ceil(configPanel.getBoundingClientRect().height);
+
+  if (tableWrap) {
+    const panelHeight = resultsPanel.getBoundingClientRect().height || resultsPanel.offsetHeight;
+    const tableHeight = tableWrap.getBoundingClientRect().height || tableWrap.offsetHeight;
+    const nonTableHeight = Math.max(0, Math.ceil(panelHeight - tableHeight));
+    const requiredTableHeight = Math.ceil(headerHeight + (rowHeight * targetRows));
+    const requiredPanelHeight = nonTableHeight + requiredTableHeight;
+
+    const extraSpace = Math.max(0, requiredPanelHeight - naturalLeftHeight);
+    if (historyExpanded && extraSpace > 0 && historyPanel && historyList) {
+      const allocatedSpace = Math.round(extraSpace * expandedHistoryGrowRatio);
+      const baseHistoryHeight = Math.ceil(historyPanel.getBoundingClientRect().height);
+      historyPanel.style.minHeight = `${baseHistoryHeight + allocatedSpace}px`;
+      historyList.style.maxHeight = `${220 + allocatedSpace}px`;
+      naturalLeftHeight = Math.ceil(configPanel.getBoundingClientRect().height);
+    }
+
+    const finalRequiredHeight = Math.max(requiredPanelHeight, naturalLeftHeight);
+    configPanel.style.minHeight = `${finalRequiredHeight}px`;
+  }
+
+  const leftHeight = Math.ceil(configPanel.getBoundingClientRect().height);
+  if (leftHeight > 0) {
+    resultsPanel.style.height = `${leftHeight}px`;
+    resultsPanel.style.minHeight = `${leftHeight}px`;
+  }
+}
+
+function setupPanelHeightSync() {
+  if (!elements.configPanel || !elements.resultsPanel) return;
+  syncResultsPanelHeight();
+
+  if (typeof ResizeObserver !== "undefined") {
+    panelResizeObserver = new ResizeObserver(() => {
+      syncResultsPanelHeight();
+    });
+    panelResizeObserver.observe(elements.configPanel);
+  }
+
+  window.addEventListener("resize", syncResultsPanelHeight);
+}
+
 function setRunning(running) {
   elements.start.disabled = running;
   elements.cancel.disabled = !running;
@@ -217,11 +304,13 @@ function renderResults() {
       return true;
     }
     return [
+      result.index,
       result.masked_key,
       result.key,
       result.status,
-      result.reason,
       result.message,
+      result.http_status,
+      result.latency_ms,
     ].some((value) => String(value || "").toLowerCase().includes(query));
   });
 
@@ -237,9 +326,12 @@ function renderResults() {
   const start = (state.currentPage - 1) * pageSize;
   const end = start + pageSize;
 
-  for (const result of state.filteredResults.slice(start, end)) {
+  const pageResults = state.filteredResults.slice(start, end);
+  for (const [offset, result] of pageResults.entries()) {
+    const serial = start + offset + 1;
     const row = document.createElement("tr");
     row.innerHTML = `
+      <td>${serial}</td>
       <td class="status-${result.status}">${result.status}</td>
       <td><code>${result.masked_key}</code></td>
       <td>${result.message}</td>
@@ -256,6 +348,7 @@ function renderResults() {
   elements.pagePrev.disabled = state.currentPage <= 1;
   elements.pageNext.disabled = state.currentPage >= totalPages;
   elements.pageInfo.textContent = `第 ${state.currentPage} / ${totalPages} 页`;
+  syncResultsPanelHeight();
 }
 
 function renderHistory() {
@@ -293,6 +386,7 @@ function toggleHistory() {
   panel.classList.toggle("collapsed");
   const collapsed = panel.classList.contains("collapsed");
   elements.toggleHistory.textContent = collapsed ? "展开" : "收起";
+  syncResultsPanelHeight();
 }
 
 function defaultSuffixForFormat(format) {
@@ -919,6 +1013,7 @@ async function init() {
   wireFileImport();
   wireSpinboxes();
   wireActions();
+  setupPanelHeightSync();
   updateSummary(state.summary);
   renderResults();
   showBanner("", "info");
