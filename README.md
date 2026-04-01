@@ -153,6 +153,8 @@ go run ./cmd/apidetect check --provider gemini --input keys.txt --format json
 - `--concurrency`：并发数，默认 `100`
 - `--timeout`：单请求超时，默认 `10s`
 - `--format`：`text` 或 `json`
+- `--proxy-mode`：代理模式，支持 `env`、`direct`、`custom`
+- `--proxy-url`：自定义代理地址，仅 `proxy-mode=custom` 使用
 - `--export-valid`：导出有效 key 到文件
 - `--export-invalid`：导出无效 key 到文件
 - `--export-error`：导出错误结果对应的 key 到文件

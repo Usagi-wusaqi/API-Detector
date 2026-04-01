@@ -30,6 +30,19 @@ const (
 	ReasonUnknown      Reason = "unknown"
 )
 
+type ProxyMode string
+
+const (
+	ProxyModeEnv    ProxyMode = "env"
+	ProxyModeDirect ProxyMode = "direct"
+	ProxyModeCustom ProxyMode = "custom"
+)
+
+type ProxyConfig struct {
+	Mode ProxyMode `json:"mode"`
+	URL  string    `json:"url,omitempty"`
+}
+
 type Classification struct {
 	Status  Status
 	Reason  Reason
@@ -47,6 +60,7 @@ type CheckRequest struct {
 	Concurrency int
 	Timeout     time.Duration
 	Provider    Provider
+	Proxy       ProxyConfig
 }
 
 type CheckEvent struct {

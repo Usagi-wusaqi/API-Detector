@@ -41,12 +41,16 @@ func TestCheckerRunMaintainsInputOrder(t *testing.T) {
 	}))
 	defer server.Close()
 
-	checker := NewChecker(4, 2*time.Second)
+	checker, err := NewChecker(4, 2*time.Second, ProxyConfig{Mode: ProxyModeDirect})
+	if err != nil {
+		t.Fatalf("NewChecker returned error: %v", err)
+	}
 	summary, results, err := checker.Run(context.Background(), CheckRequest{
 		Keys:        []string{"sk-valid", "sk-invalid", "sk-rate"},
 		Concurrency: 4,
 		Timeout:     2 * time.Second,
 		Provider:    testProvider{url: server.URL},
+		Proxy:       ProxyConfig{Mode: ProxyModeDirect},
 	}, nil)
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
@@ -81,12 +85,16 @@ func TestCheckerRunCancellationMarksRemainingKeys(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	checker := NewChecker(2, 500*time.Millisecond)
+	checker, err := NewChecker(2, 500*time.Millisecond, ProxyConfig{Mode: ProxyModeDirect})
+	if err != nil {
+		t.Fatalf("NewChecker returned error: %v", err)
+	}
 	summary, results, err := checker.Run(ctx, CheckRequest{
 		Keys:        []string{"a", "b", "c"},
 		Concurrency: 2,
 		Timeout:     500 * time.Millisecond,
 		Provider:    testProvider{url: server.URL},
+		Proxy:       ProxyConfig{Mode: ProxyModeDirect},
 	}, nil)
 	if err == nil {
 		t.Fatalf("expected cancellation error")
@@ -104,5 +112,11 @@ func TestCheckerRunCancellationMarksRemainingKeys(t *testing.T) {
 
 	if summary.Canceled != 3 {
 		t.Fatalf("unexpected canceled count: %#v", summary)
+	}
+}
+
+func TestNewCheckerRejectsInvalidCustomProxy(t *testing.T) {
+	if _, err := NewChecker(1, time.Second, ProxyConfig{Mode: ProxyModeCustom, URL: "bad-proxy"}); err == nil {
+		t.Fatal("expected invalid proxy url to return error")
 	}
 }

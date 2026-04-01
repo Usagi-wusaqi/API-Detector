@@ -15,6 +15,9 @@ const elements = {
   concurrency: document.getElementById("concurrency"),
   timeout: document.getElementById("timeout"),
   format: document.getElementById("format"),
+  proxyMode: document.getElementById("proxy-mode"),
+  proxyUrl: document.getElementById("proxy-url"),
+  proxyUrlWrap: document.getElementById("proxy-url-wrap"),
   customUrl: document.getElementById("custom-url"),
   customMethod: document.getElementById("custom-method"),
   customAuthMode: document.getElementById("custom-auth-mode"),
@@ -233,6 +236,8 @@ async function startJob() {
     keys: elements.keys.value,
     concurrency: Number(elements.concurrency.value),
     timeout: elements.timeout.value,
+    proxy_mode: elements.proxyMode.value,
+    proxy_url: elements.proxyUrl.value,
     custom_url: elements.customUrl.value,
     custom_method: elements.customMethod.value,
     custom_auth_mode: elements.customAuthMode.value,
@@ -313,12 +318,18 @@ function syncCustomPanel() {
   elements.customPanel.classList.toggle("hidden", elements.provider.value !== "custom");
 }
 
+function syncProxyPanel() {
+  elements.proxyUrlWrap.classList.toggle("hidden", elements.proxyMode.value !== "custom");
+}
+
 function savePreferences() {
   localStorage.setItem(storageKey, JSON.stringify({
     provider: elements.provider.value,
     concurrency: elements.concurrency.value,
     timeout: elements.timeout.value,
     format: elements.format.value,
+    proxyMode: elements.proxyMode.value,
+    proxyUrl: elements.proxyUrl.value,
     customUrl: elements.customUrl.value,
     customMethod: elements.customMethod.value,
     customAuthMode: elements.customAuthMode.value,
@@ -340,6 +351,8 @@ function restorePreferences() {
     elements.concurrency.value = payload.concurrency || elements.concurrency.value;
     elements.timeout.value = payload.timeout || elements.timeout.value;
     elements.format.value = payload.format || elements.format.value;
+    elements.proxyMode.value = payload.proxyMode || elements.proxyMode.value;
+    elements.proxyUrl.value = payload.proxyUrl || "";
     elements.customUrl.value = payload.customUrl || "";
     elements.customMethod.value = payload.customMethod || elements.customMethod.value;
     elements.customAuthMode.value = payload.customAuthMode || elements.customAuthMode.value;
@@ -370,6 +383,8 @@ function wireActions() {
     elements.concurrency,
     elements.timeout,
     elements.format,
+    elements.proxyMode,
+    elements.proxyUrl,
     elements.customUrl,
     elements.customMethod,
     elements.customAuthMode,
@@ -379,6 +394,9 @@ function wireActions() {
     element.addEventListener("change", () => {
       if (element === elements.provider) {
         syncCustomPanel();
+      }
+      if (element === elements.proxyMode) {
+        syncProxyPanel();
       }
       savePreferences();
     });
@@ -390,6 +408,7 @@ async function init() {
   await loadProviders();
   restorePreferences();
   syncCustomPanel();
+  syncProxyPanel();
   wireFileImport();
   wireActions();
   updateSummary(state.summary);

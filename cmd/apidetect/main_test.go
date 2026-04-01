@@ -340,6 +340,24 @@ func TestRunCheckCustomNoBearerWithHeaderPlaceholder(t *testing.T) {
 	}
 }
 
+func TestRunCheckRejectsInvalidProxyConfig(t *testing.T) {
+	keysFile := filepath.Join(t.TempDir(), "keys.txt")
+	if err := os.WriteFile(keysFile, []byte("sk-test\n"), 0o644); err != nil {
+		t.Fatalf("os.WriteFile keys returned error: %v", err)
+	}
+
+	err := runWithCapturedStdout(t, []string{
+		"check",
+		"--provider", "openai",
+		"--input", keysFile,
+		"--proxy-mode", "custom",
+		"--proxy-url", "bad-proxy",
+	})
+	if err == nil {
+		t.Fatal("expected invalid proxy config to return error")
+	}
+}
+
 func runWithCapturedStdout(t *testing.T, args []string) error {
 	t.Helper()
 

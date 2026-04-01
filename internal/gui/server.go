@@ -187,6 +187,8 @@ type startJobPayload struct {
 	Keys           string `json:"keys"`
 	Concurrency    int    `json:"concurrency"`
 	Timeout        string `json:"timeout"`
+	ProxyMode      string `json:"proxy_mode"`
+	ProxyURL       string `json:"proxy_url"`
 	CustomURL      string `json:"custom_url"`
 	CustomMethod   string `json:"custom_method"`
 	CustomAuthMode string `json:"custom_auth_mode"`
@@ -289,12 +291,37 @@ func (m *jobManager) start(payload startJobPayload) (string, error) {
 	m.mu.Unlock()
 
 	go func() {
-		checker := core.NewChecker(payload.Concurrency, timeout)
+		checker, err := core.NewChecker(payload.Concurrency, timeout, core.ProxyConfig{
+			Mode: core.ProxyMode(payload.ProxyMode),
+			URL:  payload.ProxyURL,
+		})
+		if err != nil {
+			m.mu.Lock()
+			job.status = "done"
+			job.summary.Total = len(keys)
+			job.summary.Checked = len(keys)
+			for index, key := range keys {
+				result := core.NewResult(index, key, core.Classification{
+					Status:  core.StatusError,
+					Reason:  core.ReasonUnknown,
+					Message: err.Error(),
+				}, 0, 0)
+				job.results = append(job.results, result)
+				job.summary.Error++
+			}
+			m.broadcast(job, jobEvent{Type: "complete", Summary: job.summary})
+			m.mu.Unlock()
+			return
+		}
 		summary, results, _ := checker.Run(ctx, core.CheckRequest{
 			Keys:        keys,
 			Concurrency: payload.Concurrency,
 			Timeout:     timeout,
 			Provider:    provider,
+			Proxy: core.ProxyConfig{
+				Mode: core.ProxyMode(payload.ProxyMode),
+				URL:  payload.ProxyURL,
+			},
 		}, func(event core.CheckEvent) {
 			m.mu.Lock()
 			job.results = append(job.results, event.Result)

@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -15,9 +17,14 @@ type Checker struct {
 	client *http.Client
 }
 
-func NewChecker(concurrency int, timeout time.Duration) *Checker {
+func NewChecker(concurrency int, timeout time.Duration, proxyConfig ProxyConfig) (*Checker, error) {
+	proxyFunc, err := buildProxyFunc(proxyConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	transport := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
+		Proxy:               proxyFunc,
 		DialContext:         (&net.Dialer{Timeout: timeout, KeepAlive: 30 * time.Second}).DialContext,
 		MaxIdleConns:        concurrency * 2,
 		MaxIdleConnsPerHost: concurrency,
@@ -31,7 +38,7 @@ func NewChecker(concurrency int, timeout time.Duration) *Checker {
 			Timeout:   timeout,
 			Transport: transport,
 		},
-	}
+	}, nil
 }
 
 func (c *Checker) Run(ctx context.Context, request CheckRequest, onEvent func(CheckEvent)) (CheckSummary, []CheckResult, error) {
@@ -212,4 +219,33 @@ func accumulate(summary CheckSummary, result CheckResult) CheckSummary {
 func isTimeout(err error) bool {
 	var netErr net.Error
 	return errors.As(err, &netErr) && netErr.Timeout()
+}
+
+func buildProxyFunc(proxyConfig ProxyConfig) (func(*http.Request) (*url.URL, error), error) {
+	mode := proxyConfig.Mode
+	if mode == "" {
+		mode = ProxyModeEnv
+	}
+
+	switch mode {
+	case ProxyModeEnv:
+		return http.ProxyFromEnvironment, nil
+	case ProxyModeDirect:
+		return nil, nil
+	case ProxyModeCustom:
+		raw := strings.TrimSpace(proxyConfig.URL)
+		if raw == "" {
+			return nil, fmt.Errorf("proxy url is required when proxy mode is custom")
+		}
+		parsed, err := url.Parse(raw)
+		if err != nil {
+			return nil, fmt.Errorf("parse proxy url: %w", err)
+		}
+		if parsed.Scheme == "" || parsed.Host == "" {
+			return nil, fmt.Errorf("proxy url must include scheme and host")
+		}
+		return http.ProxyURL(parsed), nil
+	default:
+		return nil, fmt.Errorf("unsupported proxy mode %q", mode)
+	}
 }

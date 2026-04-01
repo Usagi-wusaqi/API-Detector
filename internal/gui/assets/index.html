@@ -50,6 +50,18 @@
                 <option value="json">json</option>
               </select>
             </label>
+            <label>
+              <span>代理模式</span>
+              <select id="proxy-mode">
+                <option value="env">跟随环境 (env)</option>
+                <option value="direct">直连 (direct)</option>
+                <option value="custom">自定义 (custom)</option>
+              </select>
+            </label>
+            <label id="proxy-url-wrap">
+              <span>代理地址</span>
+              <input id="proxy-url" type="text" placeholder="http://127.0.0.1:7890" />
+            </label>
           </div>
 
           <div id="custom-panel" class="custom-panel">
@@ -69,8 +81,8 @@
               <label>
                 <span>Auth Mode</span>
                 <select id="custom-auth-mode">
-                  <option value="bearer">bearer</option>
-                  <option value="none">none</option>
+                  <option value="bearer">Bearer (bearer)</option>
+                  <option value="none">无认证 (none)</option>
                 </select>
               </label>
               <label>

@@ -53,6 +53,7 @@ func TestJobManagerStartAndSnapshot(t *testing.T) {
 		Keys:         "sk-test\n",
 		Concurrency:  1,
 		Timeout:      "2s",
+		ProxyMode:    string(core.ProxyModeDirect),
 		CustomURL:    target.URL,
 		CustomMethod: "GET",
 	})
@@ -121,5 +122,37 @@ func TestListenWithFallbackWhenPortOccupied(t *testing.T) {
 	}
 	if !strings.HasPrefix(url, "http://127.0.0.1:") {
 		t.Fatalf("unexpected fallback url: %q", url)
+	}
+}
+
+func TestJobManagerStartWithInvalidProxyAddsErrorResults(t *testing.T) {
+	manager := newJobManager()
+	jobID, err := manager.start(startJobPayload{
+		Provider:  "openai",
+		Keys:      "sk-test\n",
+		Timeout:   "2s",
+		ProxyMode: string(core.ProxyModeCustom),
+		ProxyURL:  "bad-proxy",
+	})
+	if err != nil {
+		t.Fatalf("start returned error: %v", err)
+	}
+
+	deadline := time.Now().Add(time.Second)
+	for {
+		snapshot, err := manager.snapshot(jobID)
+		if err != nil {
+			t.Fatalf("snapshot returned error: %v", err)
+		}
+		if snapshot.Status == "done" {
+			if snapshot.Summary.Error != 1 {
+				t.Fatalf("unexpected summary: %#v", snapshot.Summary)
+			}
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("job did not complete in time")
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }

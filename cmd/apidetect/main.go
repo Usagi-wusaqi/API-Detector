@@ -91,6 +91,8 @@ func runCheck(args []string) error {
 		customBody     string
 		customBodyFile string
 		customAuthMode string
+		proxyMode      string
+		proxyURL       string
 		failInvalid    bool
 		failError      bool
 		quiet          bool
@@ -111,6 +113,8 @@ func runCheck(args []string) error {
 	fs.StringVar(&customBody, "body", "", "custom HTTP request body")
 	fs.StringVar(&customBodyFile, "body-file", "", "read custom HTTP request body from file")
 	fs.StringVar(&customAuthMode, "auth-mode", "bearer", "custom auth mode: bearer or none")
+	fs.StringVar(&proxyMode, "proxy-mode", string(core.ProxyModeEnv), "proxy mode: env, direct, or custom")
+	fs.StringVar(&proxyURL, "proxy-url", "", "custom proxy url, used when proxy mode is custom")
 	fs.BoolVar(&failInvalid, "fail-on-invalid", false, "return a non-zero exit code when invalid keys are found")
 	fs.BoolVar(&failError, "fail-on-error", false, "return a non-zero exit code when errors are found")
 	fs.BoolVar(&quiet, "quiet", false, "suppress per-key text output and keep only the final summary")
@@ -173,12 +177,19 @@ func runCheck(args []string) error {
 	}
 	defer closeReportWriter()
 
-	checker := core.NewChecker(concurrency, timeout)
 	request := core.CheckRequest{
 		Keys:        keys,
 		Concurrency: concurrency,
 		Timeout:     timeout,
 		Provider:    provider,
+		Proxy: core.ProxyConfig{
+			Mode: core.ProxyMode(proxyMode),
+			URL:  proxyURL,
+		},
+	}
+	checker, err := core.NewChecker(concurrency, timeout, request.Proxy)
+	if err != nil {
+		return err
 	}
 
 	var results []core.CheckResult
@@ -353,6 +364,8 @@ func printCheckUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --url            Custom endpoint URL")
 	fmt.Fprintln(w, "  --method         Custom HTTP method (default: GET)")
 	fmt.Fprintln(w, "  --auth-mode      Custom auth mode: bearer or none")
+	fmt.Fprintln(w, "  --proxy-mode     Proxy mode: env, direct, or custom")
+	fmt.Fprintln(w, "  --proxy-url      Custom proxy URL, used when proxy mode is custom")
 	fmt.Fprintln(w, "  --body           Custom HTTP request body")
 	fmt.Fprintln(w, "  --body-file      Read custom HTTP request body from file")
 	fmt.Fprintln(w, "  --header         Custom header in 'Name: Value' form; repeatable")
